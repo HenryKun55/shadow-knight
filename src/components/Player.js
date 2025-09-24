@@ -85,8 +85,6 @@ export class Player {
     // Directional attack conditions
     if (direction === 'down' && physics.onGround) {
       return false; // Down attack only in air
-    } else if (direction === 'none' && !physics.onGround) {
-      return false; // Regular attack only on ground
     }
 
     this.isAttacking = true;
