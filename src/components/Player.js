@@ -54,8 +54,11 @@ export class Player {
   }
 
   canAttack() {
-    if (cheats.infiniteStamina) return true;
-    return !this.isAttacking && !this.isDashing && this.stamina >= this.attackStaminaCost && (Date.now() - this.lastAttackInputTime >= this.attackCooldown);
+    const canPerformAttack = !this.isAttacking && !this.isDashing && (Date.now() - this.lastAttackInputTime >= this.attackCooldown);
+    if (cheats.infiniteStamina) {
+      return canPerformAttack; // Only check for attack state and cooldown
+    }
+    return canPerformAttack && this.stamina >= this.attackStaminaCost;
   }
 
   canJump(physics) {
@@ -114,11 +117,14 @@ export class Player {
     return true;
   }
 
-  takeDamage(amount) {
+  takeDamage(amount, sprite) {
     if (this.invulnerabilityTime > 0) return false;
     this.health = Math.max(0, this.health - amount);
     this.invulnerabilityTime = this.invulnerabilityDuration;
     this.hitStop = 100;
+    if (sprite) {
+      sprite.flash('#ffffff', 150); // Flash white when taking damage
+    }
     return true;
   }
 

@@ -23,6 +23,8 @@ export class Sprite {
 
     this.flashColor = null;
     this.flashDuration = 0;
+    this.initialFlashDuration = 0;
+    this.originalColor = null;
 
     this.color = options.color || null;
   }
@@ -51,15 +53,25 @@ export class Sprite {
 
     if (this.flashDuration > 0) {
       this.flashDuration -= deltaTime;
-      if (this.flashDuration < 0) {
+      if (this.flashDuration <= 0) {
         this.flashDuration = 0;
+        if (this.originalColor !== null) {
+          this.color = this.originalColor;
+          this.originalColor = null;
+        }
         this.flashColor = null;
+        this.initialFlashDuration = 0;
       }
     }
   }
 
   flash(color, duration) {
+    if (this.originalColor === null) {
+      this.originalColor = this.color;
+    }
+    this.color = color;
     this.flashColor = color;
     this.flashDuration = duration;
+    this.initialFlashDuration = duration;
   }
 }

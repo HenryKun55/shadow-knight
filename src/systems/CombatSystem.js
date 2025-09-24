@@ -68,7 +68,7 @@ export class CombatSystem {
       const sprite = playerEntity.getComponent('Sprite');
 
       if (player.isDashing && player.isDashAttacking) {
-        const bounds = collision.getBounds(position, sprite);
+        const bounds = collision.getBounds(position, sprite, playerEntity);
         this.createHitbox(playerEntity, {
           x: bounds.x,
           y: bounds.y,
@@ -142,9 +142,10 @@ export class CombatSystem {
       const position = targetEntity.getComponent('Position');
       const collision = targetEntity.getComponent('Collision');
       const sprite = targetEntity.getComponent('Sprite');
+      const velocity = targetEntity.getComponent('Velocity');
       if (!target || !position || !collision || target.isDead()) return;
 
-      const targetBounds = collision.getBounds(position, sprite);
+      const targetBounds = collision.getBounds(position, sprite, targetEntity);
       if (this.checkRectCollision(hitbox, targetBounds)) {
         hitbox.hitEntities.add(targetEntity);
         let damageToDeal = hitbox.damage;
@@ -153,12 +154,12 @@ export class CombatSystem {
         }
         if (target.takeDamage(damageToDeal)) {
           this.game.soundManager.play('enemyHit');
+          if (sprite) {
+            sprite.flash('#ffffff', 150); // Flash white for 150ms when hit
+          }
           if (target.isDead()) {
             this.game.soundManager.play('enemyDeath');
-            if (!targetEntity.hasComponent('Boss')) {
-              targetEntity.getComponent('Sprite').color = '#555';
-              setTimeout(() => this.game.removeEntity(targetEntity.id), 1000);
-            }
+            this.handleEnemyDeath(targetEntity, target, sprite, velocity);
           }
         }
       }
@@ -176,14 +177,14 @@ export class CombatSystem {
       const sprite = targetEntity.getComponent('Sprite');
       if (!player || player.isDead()) return;
 
-      const targetBounds = collision.getBounds(position, sprite);
+      const targetBounds = collision.getBounds(position, sprite, targetEntity);
       if (this.checkRectCollision(hitbox, targetBounds)) {
         hitbox.hitEntities.add(targetEntity);
         if (cheats.infiniteHealth) {
           // Player takes no damage if infinite health cheat is active
           return;
         }
-        if (player.takeDamage(hitbox.damage)) {
+        if (player.takeDamage(hitbox.damage, sprite)) {
           this.game.soundManager.play('playerHit');
           if (uiSystem) {
             const screenPos = this.game.worldToScreen(position.x, position.y);
@@ -226,6 +227,30 @@ export class CombatSystem {
 
   checkRectCollision(rect1, rect2) {
     return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y;
+  }
+
+  handleEnemyDeath(targetEntity, target, sprite, velocity) {    
+    console.log(`handleEnemyDeath called for ${target.constructor.name}`);
+    
+    // Realistic ragdoll physics
+    if (velocity) {
+      // Random death impulse for variety
+      const randomDirection = (Math.random() - 0.5) * 2; // -1 to 1
+      const knockbackForce = 150 + Math.random() * 100; // 150-250
+      
+      velocity.x = randomDirection * knockbackForce;
+      velocity.y = -200 - Math.random() * 100; // Strong upward impulse (-200 to -300)
+    }
+    
+    // Mark as ragdoll for special physics handling
+    target.isRagdoll = true;
+    target.bounces = 0; // Track ground bounces
+    
+    console.log(`After ragdoll setup for ${target.constructor.name}: isRagdoll=${target.isRagdoll}`);
+    
+    if (sprite) {
+      sprite.playAnimation('idle');
+    }
   }
 
   render(ctx) {

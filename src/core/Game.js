@@ -18,6 +18,17 @@ export class Game {
 
     this.lastTime = 0;
     this.deltaTime = 0;
+    this.frameCount = 0;
+    this.fpsStartTime = performance.now();
+    this.currentFPS = 60;
+    
+    // Performance profiling
+    this.performanceStats = {
+      update: 0,
+      render: 0,
+      systems: {},
+      entities: 0
+    };
 
     this.camera = {
       x: 0,
@@ -36,12 +47,43 @@ export class Game {
     };
 
     this.setupCanvas();
+    this.createBackgroundCache();
   }
 
   setupCanvas() {
     this.ctx.imageSmoothingEnabled = false;
     this.ctx.textAlign = 'left';
     this.ctx.textBaseline = 'top';
+  }
+
+  createBackgroundCache() {
+    this.backgroundCanvas = document.createElement('canvas');
+    this.backgroundCanvas.width = this.worldBounds.width;
+    this.backgroundCanvas.height = this.worldBounds.height;
+    const bgCtx = this.backgroundCanvas.getContext('2d');
+    
+    const gradient = bgCtx.createLinearGradient(0, 0, 0, this.worldBounds.height);
+    gradient.addColorStop(0, '#1a1a2e');
+    gradient.addColorStop(1, '#0f0f23');
+    bgCtx.fillStyle = gradient;
+    bgCtx.fillRect(0, 0, this.worldBounds.width, this.worldBounds.height);
+
+    bgCtx.fillStyle = 'white';
+    const stars = [];
+    for (let i = 0; i < 200; i++) {
+      stars.push({
+        x: Math.random() * this.worldBounds.width,
+        y: Math.random() * this.worldBounds.height,
+        size: Math.random() * 2
+      });
+    }
+    
+    stars.forEach(star => {
+      bgCtx.fillRect(star.x, star.y, star.size, star.size);
+    });
+
+    bgCtx.fillStyle = '#ffffff';
+    bgCtx.fillRect(0, 620, this.worldBounds.width, this.worldBounds.height - 620);
   }
 
   addEntity(entity) {
@@ -131,6 +173,13 @@ export class Game {
     this.deltaTime = Math.min(currentTime - this.lastTime, 100);
     this.lastTime = currentTime;
 
+    this.frameCount++;
+    if (currentTime - this.fpsStartTime >= 1000) {
+      this.currentFPS = Math.round((this.frameCount * 1000) / (currentTime - this.fpsStartTime));
+      this.frameCount = 0;
+      this.fpsStartTime = currentTime;
+    }
+
     this.update(this.deltaTime);
     this.render();
 
@@ -138,24 +187,38 @@ export class Game {
   }
 
   update(deltaTime) {
+    const updateStart = performance.now();
+    
     this.updateCamera();
 
+    // Update active systems with profiling
     this.systems.forEach(system => {
       if (system.update) {
+        const systemStart = performance.now();
         system.update(deltaTime);
+        const systemTime = performance.now() - systemStart;
+        this.performanceStats.systems[system.constructor.name] = systemTime;
       }
     });
 
-    for (const [id, entity] of this.entities) {
-      if (!entity.active) {
-        this.entities.delete(id);
+    // Update sprites for all entities (even inactive ones for death effects)
+    const spriteStart = performance.now();
+    for (const entity of this.entities.values()) {
+      const sprite = entity.getComponent('Sprite');
+      if (sprite) {
+        sprite.update(deltaTime);
       }
     }
+    this.performanceStats.entities = performance.now() - spriteStart;
 
     this.inputManager.update();
+    
+    this.performanceStats.update = performance.now() - updateStart;
   }
 
   render() {
+    const renderStart = performance.now();
+    
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.save();
     this.ctx.translate(-this.camera.x, -this.camera.y);
@@ -169,25 +232,50 @@ export class Game {
     });
 
     this.ctx.restore();
+    
+    this.performanceStats.render = performance.now() - renderStart;
+    
+    // Always show FPS counter
+    this.drawFPS();
   }
 
   drawBackground() {
-    const gradient = this.ctx.createLinearGradient(0, 0, 0, this.worldBounds.height);
-    gradient.addColorStop(0, '#1a1a2e');
-    gradient.addColorStop(1, '#0f0f23');
-    this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(0, 0, this.worldBounds.width, this.worldBounds.height);
+    this.ctx.drawImage(this.backgroundCanvas, 0, 0);
+  }
 
-    // Draw stars
+  drawFPS() {
+    this.ctx.save();
+    this.ctx.resetTransform();
+    
+    // Background box for better visibility
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.fillRect(5, 5, 250, 120);
+    
+    // FPS text
+    this.ctx.fillStyle = this.currentFPS < 30 ? '#ff4444' : this.currentFPS < 50 ? '#ffaa44' : '#44ff44';
+    this.ctx.font = 'bold 16px monospace';
+    this.ctx.fillText(`FPS: ${this.currentFPS}`, 10, 25);
+    
+    // Performance breakdown
     this.ctx.fillStyle = 'white';
-    for (let i = 0; i < 200; i++) {
-      const x = Math.random() * this.worldBounds.width;
-      const y = Math.random() * this.worldBounds.height;
-      const size = Math.random() * 2;
-      this.ctx.fillRect(x, y, size, size);
+    this.ctx.font = '11px monospace';
+    
+    let y = 45;
+    this.ctx.fillText(`Update: ${this.performanceStats.update.toFixed(1)}ms`, 10, y);
+    y += 12;
+    this.ctx.fillText(`Render: ${this.performanceStats.render.toFixed(1)}ms`, 10, y);
+    y += 12;
+    this.ctx.fillText(`Entities: ${this.performanceStats.entities.toFixed(1)}ms`, 10, y);
+    y += 12;
+    
+    // System breakdown
+    for (const [systemName, time] of Object.entries(this.performanceStats.systems)) {
+      if (time > 0.1) { // Only show systems taking > 0.1ms
+        this.ctx.fillText(`${systemName}: ${time.toFixed(1)}ms`, 10, y);
+        y += 12;
+      }
     }
-
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.fillRect(0, 620, this.worldBounds.width, this.worldBounds.height - 620);
+    
+    this.ctx.restore();
   }
 }

@@ -18,11 +18,17 @@ export class EnemyAISystem {
       const enemy = enemyEntity.getComponent('Enemy');
       const position = enemyEntity.getComponent('Position');
       const velocity = enemyEntity.getComponent('Velocity');
+      const sprite = enemyEntity.getComponent('Sprite'); // Get sprite here
 
-      if (!enemy || !position || !velocity || enemy.isDead()) return;
+      if (!enemy || !position || !velocity) return;
+      
+      // Always update timers, even for dead enemies (for death animation)
+      enemy.updateTimers(deltaTime);
+      
+      // Skip AI logic for dead enemies, but keep them in the game
+      if (enemy.isDead()) return;
 
       if (!enemy.target) enemy.target = player;
-      enemy.updateTimers(deltaTime);
 
       if (enemy.isStunned() || enemy.isAttacking) {
         if (enemy.isAttacking) {
@@ -32,12 +38,12 @@ export class EnemyAISystem {
       }
 
       const distance = this.calculateDistance(position, playerPos);
-      this.updateAIState(enemy, distance);
+      this.updateAIState(enemy, distance, sprite); // Pass sprite to updateAIState
       this.executeStateBehavior(enemy, enemyEntity, velocity, playerPos);
     });
   }
 
-  updateAIState(enemy, distanceToPlayer) {
+  updateAIState(enemy, distanceToPlayer, sprite) {
     if (enemy.state === 'idle' && distanceToPlayer <= enemy.detectionRange) {
       enemy.state = 'chase';
     } else if (enemy.state === 'chase') {
@@ -45,6 +51,7 @@ export class EnemyAISystem {
         enemy.state = 'idle';
       } else if (distanceToPlayer <= enemy.attackRange && enemy.canAttack()) {
         enemy.startAttack();
+        if (sprite) sprite.flash('#ff6b6b', 200); // Flash red when attacking
       }
     }
   }

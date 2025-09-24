@@ -23,6 +23,17 @@ export class Enemy {
     this.attackTime = 0;
     this.stunDuration = 800;
     this.invulnerabilityTime = 0;
+    
+    // Death state properties
+    this.deathTime = 0;
+    this.deathAnimationDuration = 1000; // 1 second death animation
+    this.isCorpse = false;
+    this.isRagdoll = false; // Physics-based death animation
+    this.bounces = 0; // Track ground bounces
+    this.finalRotation = 0; // Final rotation when ragdoll stops
+    this.corpseDirection = 1; // Which direction corpse is facing
+    this.corpseCollisionWidth = 0; // Adjusted collision width for corpse
+    this.corpseCollisionHeight = 0; // Adjusted collision height for corpse
   }
 
   takeDamage(amount) {
@@ -37,6 +48,7 @@ export class Enemy {
       this.isAttacking = false;
     } else {
       this.state = 'dead';
+      this.deathTime = 0; // Start death animation timer
     }
 
     return true;
@@ -82,6 +94,15 @@ export class Enemy {
 
     if (this.state === 'stunned' && this.stateTimer <= 0) {
       this.state = this.target ? 'chase' : 'idle';
+    }
+    
+    // Handle death animation
+    if (this.state === 'dead') {
+      this.deathTime += deltaTime;
+      // Only become corpse after ragdoll physics are done AND time has passed
+      if (this.deathTime >= this.deathAnimationDuration && !this.isRagdoll) {
+        this.isCorpse = true;
+      }
     }
   }
 

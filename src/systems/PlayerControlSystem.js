@@ -57,7 +57,7 @@ export class PlayerControlSystem {
         velocity.x = moveDirection * player.speed;
         if (sprite) sprite.flipX = moveDirection < 0;
       } else {
-        velocity.x *= physics.onGround ? 0.8 : 0.98;
+        velocity.x *= physics.onGround ? 0.6 : 0.98; // Increased ground deceleration
       }
     }
 

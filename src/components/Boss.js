@@ -33,6 +33,17 @@ export class Boss {
     this.invulnerabilityTime = 0;
     this.enrageThreshold = 0.3;
     this.isEnraged = false;
+    
+    // Death state properties (same as Enemy)
+    this.deathTime = 0;
+    this.deathAnimationDuration = 1000; // 1 second death animation
+    this.isCorpse = false;
+    this.isRagdoll = false; // Physics-based death animation
+    this.bounces = 0; // Track ground bounces
+    this.finalRotation = 0; // Final rotation when ragdoll stops
+    this.corpseDirection = 1; // Which direction corpse is facing
+    this.corpseCollisionWidth = 0; // Adjusted collision width for corpse
+    this.corpseCollisionHeight = 0; // Adjusted collision height for corpse
   }
 
   takeDamage(amount) {
@@ -41,7 +52,14 @@ export class Boss {
     }
     this.health = Math.max(0, this.health - amount);
     this.invulnerabilityTime = 200;
-    this.checkPhaseTransition();
+    
+    if (this.health <= 0) {
+      this.state = 'dead';
+      this.deathTime = 0; // Start death animation timer
+    } else {
+      this.checkPhaseTransition();
+    }
+    
     return true;
   }
 
@@ -99,9 +117,18 @@ export class Boss {
   updateTimers(deltaTime) {
     this.stateTimer = Math.max(0, this.stateTimer - deltaTime);
     this.invulnerabilityTime = Math.max(0, this.invulnerabilityTime - deltaTime);
+    
+    // Handle death animation (same as Enemy)
+    if (this.state === 'dead') {
+      this.deathTime += deltaTime;
+      // Only become corpse after ragdoll physics are done AND time has passed
+      if (this.deathTime >= this.deathAnimationDuration && !this.isRagdoll) {
+        this.isCorpse = true;
+      }
+    }
   }
 
   isDead() {
-    return this.health <= 0;
+    return this.health <= 0 || this.state === 'dead';
   }
 }

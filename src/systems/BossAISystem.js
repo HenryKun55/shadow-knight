@@ -20,14 +20,21 @@ export class BossAISystem {
       const velocity = bossEntity.getComponent('Velocity');
       const sprite = bossEntity.getComponent('Sprite');
 
-      if (!boss || !position || !velocity || boss.isDead()) {
-        if (velocity) velocity.x = 0;
+      if (!boss || !position || !velocity) return;
+      
+      // Always update timers, even for dead bosses (for death animation)
+      boss.updateTimers(deltaTime);
+      
+      // Skip AI logic for dead bosses, but allow ragdoll physics
+      if (boss.isDead()) {
+        // Only stop AI movement if boss is already corpse (ragdoll finished)
+        if (boss.isCorpse && velocity) {
+          velocity.x = 0;
+        }
         return;
       }
 
       if (!boss.target) boss.target = player;
-
-      boss.updateTimers(deltaTime);
 
       if (boss.state === 'dormant') {
         const playerPos = player.getComponent('Position');

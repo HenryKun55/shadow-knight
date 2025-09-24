@@ -22,16 +22,21 @@ export class RenderSystem {
         );
 
         // --- Render Entities ---
-        const entities = this.game.getEntitiesWithComponent('Sprite');
-        entities.forEach((entity) => {
-            this.drawSprite(ctx, entity);
-            if (this.game.debugMode) this.drawDebugInfo(ctx, entity);
-        });
+        for (const entity of this.game.entities.values()) {
+            const sprite = entity.getComponent('Sprite');
+            if (sprite) {
+                this.drawSprite(ctx, entity);
+                if (this.game.debugMode) this.drawDebugInfo(ctx, entity);
+            }
+        }
     }
 
     drawSprite(ctx, entity) {
         const sprite = entity.getComponent('Sprite');
         const position = entity.getComponent('Position');
+        const enemy = entity.getComponent('Enemy');
+        const boss = entity.getComponent('Boss');
+        
         if (!sprite.visible) return;
 
         ctx.save();
@@ -40,6 +45,14 @@ export class RenderSystem {
             position.x + sprite.shakeEffect.x,
             position.y + sprite.shakeEffect.y
         );
+
+        // Check if this is a dead enemy and handle corpse rendering
+        const isDead = (enemy && enemy.isDead()) || (boss && boss.isDead());
+        if (isDead) {
+            this.drawDeadEnemy(ctx, entity, sprite, enemy || boss);
+            ctx.restore();
+            return;
+        }
 
         if (sprite.flipX) ctx.scale(-1, 1);
 
@@ -67,15 +80,81 @@ export class RenderSystem {
             );
         }
 
-        // Draw flash effect if active
-        if (sprite.flashDuration > 0 && sprite.flashColor) {
-            ctx.save();
-            ctx.globalAlpha = (sprite.flashDuration / 500); // Assuming initial flash duration is 500ms
-            ctx.fillStyle = sprite.flashColor;
-            ctx.fillRect(sprite.offsetX, sprite.offsetY, sprite.width, sprite.height);
-            ctx.restore();
-        }
+        ctx.restore();
+    }
 
+    drawDeadEnemy(ctx, entity, sprite, target) {
+        const deathProgress = target.deathTime / target.deathAnimationDuration;
+        const isCorpse = target.isCorpse;
+        const isRagdoll = target.isRagdoll;
+        const velocity = entity.getComponent('Velocity');
+        const position = entity.getComponent('Position');
+        
+        // Temporary debug log to find the issue
+        if (target.constructor.name === 'Boss') {
+            console.log(`Boss death state: isCorpse=${isCorpse}, isRagdoll=${isRagdoll}, deathProgress=${deathProgress.toFixed(2)}`);
+        }
+        
+        ctx.save();
+        
+        if (isCorpse && !isRagdoll) {
+            // Final corpse state - lying down with final rotation
+            ctx.globalAlpha = 0.8;
+            
+            // Apply final rotation to make enemy lie down
+            ctx.rotate(target.finalRotation);
+            
+            // Adjust position for rotated sprite
+            const rotatedOffsetX = target.corpseDirection > 0 ? sprite.offsetX : sprite.offsetX;
+            const rotatedOffsetY = target.corpseDirection > 0 ? sprite.offsetY - sprite.width/2 : sprite.offsetY + sprite.width/2;
+            
+            // Draw corpse with darker color (no shadow needed - the dark corpse is clear enough)
+            ctx.fillStyle = '#333'; // Dark corpse color
+            ctx.fillRect(rotatedOffsetX, rotatedOffsetY, sprite.width, sprite.height);
+        } else if (isRagdoll) {
+            // Ragdoll physics active - show rotation and impact
+            const rotationAngle = Math.atan2(velocity?.y || 0, velocity?.x || 1) * 0.3; // Subtle rotation based on velocity
+            const impactScale = Math.abs(velocity?.y || 0) > 100 ? 1.1 : 1.0; // Slight squash on high velocity
+            
+            ctx.rotate(rotationAngle);
+            ctx.scale(impactScale, 1 / impactScale);
+            ctx.globalAlpha = Math.max(0.7, 1 - deathProgress * 0.3);
+            
+            // Color based on impact
+            let color = sprite.color;
+            if (Math.abs(velocity?.y || 0) > 50) {
+                color = '#666'; // Gray during impact
+            } else if (deathProgress > 0.5) {
+                color = '#444'; // Darker as time passes
+            }
+            
+            ctx.fillStyle = color;
+            ctx.fillRect(sprite.offsetX, sprite.offsetY, sprite.width, sprite.height);
+        } else {
+            // FORCE RAGDOLL FOR BOSS - TEMPORARY FIX
+            if (target.constructor.name === 'Boss' && !target.isRagdoll) {
+                console.log('FORCING Boss to ragdoll mode!');
+                target.isRagdoll = true;
+                target.bounces = 0;
+            }
+            
+            // Regular death animation (should not be used for Boss anymore)
+            const scaleY = Math.max(0.3, 1 - (deathProgress * 0.7));
+            const alpha = Math.max(0.4, 1 - (deathProgress * 0.6));
+            const darkenFactor = deathProgress;
+            
+            ctx.scale(1, scaleY);
+            ctx.globalAlpha = alpha;
+            
+            let color = sprite.color;
+            if (darkenFactor > 0.2) {
+                color = darkenFactor > 0.6 ? '#333' : '#666';
+            }
+            
+            ctx.fillStyle = color;
+            ctx.fillRect(sprite.offsetX, sprite.offsetY / scaleY, sprite.width, sprite.height);
+        }
+        
         ctx.restore();
     }
 
@@ -91,7 +170,7 @@ export class RenderSystem {
         const collision = entity.getComponent('Collision');
         const sprite = entity.getComponent('Sprite');
         if (collision && sprite) {
-            const bounds = collision.getBounds(position, sprite);
+            const bounds = collision.getBounds(position, sprite, entity);
             ctx.strokeStyle = '#00ff00'; // Green for collision boxes
             ctx.lineWidth = 1;
             ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
