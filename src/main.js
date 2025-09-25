@@ -53,6 +53,13 @@ class ShadowKnight {
       document.getElementById('loading-screen').classList.add('hidden');
       console.log('Shadow Knight initialized. Waiting for player to start.');
 
+      // Make game instance available globally for volume controls
+      window.gameInstance = this.game;
+      // Apply saved volumes from localStorage
+      if (window.applySavedVolumes) {
+        window.applySavedVolumes();
+      }
+
     } catch (error) {
       console.error('Failed to initialize Shadow Knight:', error);
     }
@@ -77,9 +84,7 @@ class ShadowKnight {
     settingsButton.addEventListener('click', () => settingsModal.classList.remove('hidden'));
     closeSettingsButton.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
-    document.getElementById('master-volume').addEventListener('input', (e) => this.game.soundManager.setMasterVolume(e.target.value));
-    document.getElementById('bgm-volume').addEventListener('input', (e) => this.game.soundManager.setBGMVolume(e.target.value));
-    document.getElementById('sfx-volume').addEventListener('input', (e) => this.game.soundManager.setSFXVolume(e.target.value));
+    // Volume controls are now handled by the HTML script section with applySavedVolumes
 
     document.getElementById('infinite-health').addEventListener('change', (e) => cheats.infiniteHealth = e.target.checked);
     document.getElementById('infinite-stamina').addEventListener('change', (e) => cheats.infiniteStamina = e.target.checked);

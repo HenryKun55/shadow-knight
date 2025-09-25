@@ -37,11 +37,21 @@ export class PlayerControlSystem {
   handlePlayerDeath(playerEntity) {
     const velocity = playerEntity.getComponent('Velocity');
     const sprite = playerEntity.getComponent('Sprite');
+    const player = playerEntity.getComponent('Player');
+    
     if (velocity) {
       velocity.x = 0;
     }
     if (sprite && sprite.color !== '#555555') {
       sprite.color = '#555555';
+      sprite.playAnimation('idle'); // Reset animation to idle on death
+    }
+    if (player) {
+      // Reset combat states on death
+      player.isAttacking = false;
+      player.isDashing = false;
+      player.attackTime = 0;
+      player.dashTime = 0;
     }
   }
 
@@ -98,7 +108,7 @@ export class PlayerControlSystem {
   }
 
   updateAnimations(player, velocity, physics, sprite) {
-    if (!sprite || player.isDashing) return;
+    if (!sprite || player.isDashing || player.isDead()) return;
 
     if (player.isAttacking) {
       sprite.playAnimation('attack');

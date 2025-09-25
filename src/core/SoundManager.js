@@ -5,6 +5,8 @@ export class SoundManager {
     this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     this.sounds = new Map();
     this.masterVolume = 0.5;
+    this.bgmVolume = 0.3;
+    this.sfxVolume = 1.0;
     this.bgmSource = null;
     this.bgmGainNode = this.audioContext.createGain();
     this.bgmGainNode.connect(this.audioContext.destination);
@@ -38,7 +40,7 @@ export class SoundManager {
     source.buffer = soundBuffer;
 
     const gainNode = this.audioContext.createGain();
-    gainNode.gain.value = volume * this.masterVolume;
+    gainNode.gain.value = volume * this.sfxVolume * this.masterVolume;
 
     source.connect(gainNode);
     gainNode.connect(this.audioContext.destination);
@@ -56,9 +58,29 @@ export class SoundManager {
     this.bgmSource.buffer = soundBuffer;
     this.bgmSource.loop = true;
 
-    this.bgmGainNode.gain.value = volume * this.masterVolume;
+    this.bgmGainNode.gain.value = volume * this.bgmVolume * this.masterVolume;
 
     this.bgmSource.connect(this.bgmGainNode);
     this.bgmSource.start(0);
+  }
+
+  setMasterVolume(value) {
+    this.masterVolume = parseFloat(value);
+    // Update current BGM volume if playing
+    if (this.bgmSource) {
+      this.bgmGainNode.gain.value = this.bgmVolume * this.masterVolume;
+    }
+  }
+
+  setBGMVolume(value) {
+    this.bgmVolume = parseFloat(value);
+    // Update current BGM volume if playing
+    if (this.bgmSource) {
+      this.bgmGainNode.gain.value = this.bgmVolume * this.masterVolume;
+    }
+  }
+
+  setSFXVolume(value) {
+    this.sfxVolume = parseFloat(value);
   }
 }

@@ -23,16 +23,34 @@
             <div class="modal-content">
                 <h2>Settings</h2>
                 <div class="setting">
-                    <label for="master-volume">Master Volume</label>
-                    <input type="range" id="master-volume" min="0" max="1" step="0.1" value="1">
+                    <label>Master Volume</label>
+                    <div class="volume-control">
+                        <button class="volume-btn" onclick="changeVolume('master', -10)">--</button>
+                        <button class="volume-btn" onclick="changeVolume('master', -1)">-</button>
+                        <input type="number" id="master-volume-input" min="0" max="100" value="50" onchange="setVolume('master', this.value)" class="volume-input">
+                        <button class="volume-btn" onclick="changeVolume('master', 1)">+</button>
+                        <button class="volume-btn" onclick="changeVolume('master', 10)">++</button>
+                    </div>
                 </div>
                 <div class="setting">
-                    <label for="bgm-volume">BGM Volume</label>
-                    <input type="range" id="bgm-volume" min="0" max="1" step="0.1" value="1">
+                    <label>BGM Volume</label>
+                    <div class="volume-control">
+                        <button class="volume-btn" onclick="changeVolume('bgm', -10)">--</button>
+                        <button class="volume-btn" onclick="changeVolume('bgm', -1)">-</button>
+                        <input type="number" id="bgm-volume-input" min="0" max="100" value="30" onchange="setVolume('bgm', this.value)" class="volume-input">
+                        <button class="volume-btn" onclick="changeVolume('bgm', 1)">+</button>
+                        <button class="volume-btn" onclick="changeVolume('bgm', 10)">++</button>
+                    </div>
                 </div>
                 <div class="setting">
-                    <label for="sfx-volume">SFX Volume</label>
-                    <input type="range" id="sfx-volume" min="0" max="1" step="0.1" value="1">
+                    <label>SFX Volume</label>
+                    <div class="volume-control">
+                        <button class="volume-btn" onclick="changeVolume('sfx', -10)">--</button>
+                        <button class="volume-btn" onclick="changeVolume('sfx', -1)">-</button>
+                        <input type="number" id="sfx-volume-input" min="0" max="100" value="100" onchange="setVolume('sfx', this.value)" class="volume-input">
+                        <button class="volume-btn" onclick="changeVolume('sfx', 1)">+</button>
+                        <button class="volume-btn" onclick="changeVolume('sfx', 10)">++</button>
+                    </div>
                 </div>
                 <button id="close-settings-button" class="menu-button">Close</button>
             </div>
@@ -80,6 +98,114 @@
         </div>
     </div>
     
+    <script>
+        // Sistema de volume ROBUSTO com debug
+        let volumes = {
+            master: 50,
+            bgm: 30,
+            sfx: 100
+        };
+
+        // Carregar volumes salvos
+        function loadSavedVolumes() {
+            try {
+                const saved = {
+                    master: localStorage.getItem('shadowknight-master-volume'),
+                    bgm: localStorage.getItem('shadowknight-bgm-volume'),
+                    sfx: localStorage.getItem('shadowknight-sfx-volume')
+                };
+                
+                console.log('Loading saved volumes:', saved);
+                
+                if (saved.master !== null) volumes.master = Math.max(0, Math.min(100, parseInt(saved.master)));
+                if (saved.bgm !== null) volumes.bgm = Math.max(0, Math.min(100, parseInt(saved.bgm)));
+                if (saved.sfx !== null) volumes.sfx = Math.max(0, Math.min(100, parseInt(saved.sfx)));
+                
+                console.log('Final loaded volumes:', volumes);
+            } catch (error) {
+                console.error('Error loading volumes:', error);
+            }
+        }
+
+        // Salvar volume
+        function saveVolume(type, value) {
+            try {
+                localStorage.setItem(`shadowknight-${type}-volume`, value);
+                console.log(`Saved ${type} volume: ${value}`);
+            } catch (error) {
+                console.error('Error saving volume:', error);
+            }
+        }
+
+        // Aplicar volume no jogo
+        function applyVolume(type, value) {
+            if (window.gameInstance && window.gameInstance.soundManager) {
+                const normalizedValue = value / 100;
+                switch(type) {
+                    case 'master':
+                        window.gameInstance.soundManager.setMasterVolume(normalizedValue);
+                        break;
+                    case 'bgm':
+                        window.gameInstance.soundManager.setBGMVolume(normalizedValue);
+                        break;
+                    case 'sfx':
+                        window.gameInstance.soundManager.setSFXVolume(normalizedValue);
+                        break;
+                }
+                console.log(`Applied ${type} volume: ${normalizedValue} (${value}%)`);
+            }
+        }
+
+        // Atualizar display
+        function updateDisplay(type, value) {
+            const input = document.getElementById(type + '-volume-input');
+            if (input) {
+                input.value = value;
+            }
+        }
+
+        // Mudar volume com botões
+        function changeVolume(type, delta) {
+            const newValue = Math.max(0, Math.min(100, volumes[type] + delta));
+            console.log(`Changing ${type} from ${volumes[type]} to ${newValue} (delta: ${delta})`);
+            
+            volumes[type] = newValue;
+            updateDisplay(type, newValue);
+            saveVolume(type, newValue);
+            applyVolume(type, newValue);
+        }
+
+        // Definir volume diretamente
+        function setVolume(type, inputValue) {
+            const newValue = Math.max(0, Math.min(100, parseInt(inputValue) || 0));
+            console.log(`Setting ${type} directly to ${newValue} (input was: ${inputValue})`);
+            
+            volumes[type] = newValue;
+            updateDisplay(type, newValue);
+            saveVolume(type, newValue);
+            applyVolume(type, newValue);
+        }
+
+        // Inicializar quando página carrega
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, initializing volumes...');
+            loadSavedVolumes();
+            
+            updateDisplay('master', volumes.master);
+            updateDisplay('bgm', volumes.bgm);
+            updateDisplay('sfx', volumes.sfx);
+            
+            console.log('Volume displays updated');
+        });
+
+        // Aplicar volumes quando jogo inicializar
+        window.applySavedVolumes = function() {
+            console.log('Applying saved volumes to game...');
+            applyVolume('master', volumes.master);
+            applyVolume('bgm', volumes.bgm);
+            applyVolume('sfx', volumes.sfx);
+        };
+    </script>
     <script type="module" src="./src/main.js"></script>
 </body>
 </html>
