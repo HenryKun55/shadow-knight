@@ -16,6 +16,11 @@ export class PlayerControlSystem {
         return;
       }
 
+      if (player.isTransitioning) {
+        // Don't process input during room transitions
+        return;
+      }
+
       const velocity = entity.getComponent('Velocity');
       const physics = entity.getComponent('Physics');
       const sprite = entity.getComponent('Sprite');
@@ -26,6 +31,7 @@ export class PlayerControlSystem {
         return;
       }
 
+      this.handleMapInput(player);
       this.handleMovementInput(player, velocity, physics, sprite);
       this.handleCombatInput(player, physics);
       player.updateTimers(deltaTime);
@@ -38,7 +44,7 @@ export class PlayerControlSystem {
     const velocity = playerEntity.getComponent('Velocity');
     const sprite = playerEntity.getComponent('Sprite');
     const player = playerEntity.getComponent('Player');
-    
+
     if (velocity) {
       velocity.x = 0;
     }
@@ -55,6 +61,23 @@ export class PlayerControlSystem {
     }
   }
 
+  handleMapInput(player) {
+    const input = this.game.inputManager;
+    const mapSystem = this.game.getSystem('MapSystem');
+
+    if (!mapSystem) return;
+
+    if (input.isKeyPressed('KeyM')) {
+      if (player.mapState.isOpen) {
+        player.mapState.closeMap();
+        mapSystem.hideMap();
+      } else {
+        player.mapState.openMap();
+        mapSystem.showMap(player.mapState);
+      }
+    }
+  }
+
   handleMovementInput(player, velocity, physics, sprite) {
     const input = this.game.inputManager;
     let moveDirection = 0;
@@ -64,7 +87,14 @@ export class PlayerControlSystem {
     if (!player.isDashing && !player.isAttacking) {
       if (moveDirection !== 0) {
         player.facingDirection = moveDirection;
-        velocity.x = moveDirection * player.speed;
+        let speed = player.speed;
+
+        // Slow movement when map is open
+        if (player.mapState.isOpen) {
+          speed *= player.mapState.slowMovementFactor;
+        }
+
+        velocity.x = moveDirection * speed;
         if (sprite) sprite.flipX = moveDirection < 0;
       } else {
         velocity.x *= physics.onGround ? 0.6 : 0.98; // Increased ground deceleration

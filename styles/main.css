@@ -12,26 +12,6 @@ body {
     user-select: none;
 }
 
-/* Permitir interação nos modals */
-.modal {
-    user-select: auto !important;
-    pointer-events: auto !important;
-}
-
-.modal * {
-    user-select: auto !important;
-    pointer-events: auto !important;
-}
-
-.modal input[type="range"] {
-    user-select: auto !important;
-    pointer-events: auto !important;
-    -webkit-user-select: auto !important;
-    -moz-user-select: auto !important;
-    -ms-user-select: auto !important;
-    touch-action: manipulation !important;
-}
-
 #game-container {
     position: relative;
     width: 100vw;
@@ -39,255 +19,189 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #1a1a2e, #0f0f23);
+    background: #000;
 }
 
 #game-canvas {
-    display: block;
-    border: 2px solid #444;
-    background: #000;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+  position: relative;
+  z-index: 1;
 }
 
-#loading-screen, #main-menu {
+#loading-screen, #main-menu, #settings-modal, #cheat-menu {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.9);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    background: rgba(10, 10, 20, 0.95);
     z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+#cheat-menu {
+    justify-content: flex-start;
+    align-items: flex-start;
+    background: none;
+    backdrop-filter: none;
 }
 
 #main-menu h1 {
-    font-size: 4rem;
-    color: #ff6b6b;
-    text-shadow: 3px 3px 0px #444;
-    margin-bottom: 2rem;
+    font-size: 5rem;
+    color: #ff4757;
+    text-shadow: 0 0 15px #ff4757, 0 0 5px white;
+    margin-bottom: 40px;
 }
 
 .menu-button {
-    font-family: 'Courier New', monospace;
     font-size: 1.5rem;
-    padding: 0.75rem 1.5rem;
-    margin: 0.5rem;
-    background: #333;
-    color: #fff;
-    border: 2px solid #555;
-    border-radius: 5px;
+    padding: 15px 40px;
+    margin: 10px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    background: #1a1a2e;
+    border: 2px solid #555;
+    color: #ddd;
+    transition: all 0.2s ease-in-out;
+    letter-spacing: 2px;
 }
 
 .menu-button:hover {
-    background: #ff6b6b;
-    color: #000;
-    border-color: #ff4757;
-}
-
-.loader {
-    width: 50px;
-    height: 50px;
-    border: 3px solid #333;
-    border-top: 3px solid #ff6b6b;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-#ui-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
-
-#hud {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.health-bar, .stamina-bar {
-    position: relative;
-    width: 200px;
-    height: 20px;
-    background: rgba(0, 0, 0, 0.7);
-    border: 2px solid #444;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.health-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ff4757, #ff6b6b);
-    transition: width 0.3s ease;
-    width: 100%;
-}
-
-.stamina-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #3742fa, #5352ed);
-    transition: width 0.2s ease;
-    width: 100%;
-}
-
-.health-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 12px;
-    font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-.controls {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 15px;
-    border-radius: 5px;
-    font-size: 12px;
-    line-height: 1.4;
-}
-
-.controls div {
-    margin-bottom: 5px;
-}
-
-.hidden {
-    display: none !important;
-}
-
-.modal {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
+    background: #ff4757;
+    border-color: #ff6b6b;
+    color: white;
+    transform: scale(1.05);
 }
 
 .modal-content {
-    background: #1a1a2e;
-    padding: 2rem;
+    background: #16213e;
+    padding: 40px;
+    border: 2px solid #555;
     border-radius: 10px;
-    border: 2px solid #444;
-    min-width: 300px;
-    text-align: center;
-    pointer-events: auto;
+    min-width: 400px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 .modal-content h2 {
-    margin-bottom: 1.5rem;
-    color: #ff6b6b;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 2rem;
 }
 
 .setting {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
-    pointer-events: auto;
+    margin-bottom: 15px;
 }
 
-.setting label {
-    font-size: 1rem;
+#ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
 }
 
-/* CONTROLES DE VOLUME COM BOTÕES */
-.volume-control {
-    display: flex;
-    align-items: center;
+#hud {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#controls-hint {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  font-size: 14px;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 1px 1px 2px #000;
+}
+
+.health-bar, .stamina-bar {
+    width: 300px; height: 25px; background: rgba(0, 0, 0, 0.7);
+    border: 2px solid #444; border-radius: 5px; overflow: hidden;
+    position: relative;
+}
+.stamina-bar { width: 250px; height: 15px; }
+
+.health-fill { height: 100%; background: linear-gradient(90deg, #c0392b, #e74c3c); transition: width 0.3s ease; }
+.stamina-fill { height: 100%; background: linear-gradient(90deg, #27ae60, #2ecc71); transition: width 0.2s ease; }
+
+.health-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+    color: #fff;
+    pointer-events: none;
+}
+
+#cheat-menu .modal-content {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid #444;
+    padding: 10px;
+    font-size: 12px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Map styles */
+#map-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.85);
+    border: 2px solid #ccc;
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 100;
+}
+
+#map-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
     gap: 10px;
 }
 
-.volume-btn {
-    background: #444;
-    color: white;
-    border: 1px solid #666;
-    width: 35px;
-    height: 30px;
-    border-radius: 5px;
-    cursor: pointer;
+.map-room {
+    width: 80px;
+    height: 60px;
+    border: 1px solid #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: monospace;
     font-size: 12px;
-    font-weight: bold;
-}
-
-.volume-btn:hover {
-    background: #555;
-}
-
-.volume-btn:active {
-    background: #333;
-}
-
-.volume-input {
-    background: #333;
     color: white;
-    border: 1px solid #666;
-    padding: 5px;
-    border-radius: 3px;
-    width: 60px;
-    text-align: center;
-    font-weight: bold;
-    font-size: 14px;
+    transition: all 0.3s ease;
 }
 
-.volume-input:focus {
-    outline: none;
-    border-color: #4f88ff;
-}
-
-input[type="checkbox"] {
-    cursor: pointer;
-}
-
-#cheat-menu {
-    z-index: 1500;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-    #game-canvas {
-        width: 100vw;
-        height: auto;
-        max-height: 100vh;
-    }
-    
-    .controls {
-        bottom: 10px;
-        right: 10px;
-        font-size: 10px;
-        padding: 10px;
-    }
-    
-    #hud {
-        top: 10px;
-        left: 10px;
-    }
-    
-    .health-bar, .stamina-bar {
-        width: 150px;
-        height: 15px;
-    }
-}
+.map-room.unexplored { background-color: #222; color: #666; border-color: #444; }
+.map-room.visited { background-color: #3a506b; border-color: #5bc0be; }
+.map-room.current { background-color: #fca311; border-color: #fff; box-shadow: 0 0 15px #fca311; font-weight: bold; }
+.map-room.boss { border-color: #e71d36; color: #e71d36; }

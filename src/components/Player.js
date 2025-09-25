@@ -1,6 +1,7 @@
 // --- COMPLETE AND UNABRIDGED FILE ---
 
 import { cheats } from '../core/cheat.js';
+import { MapState } from './MapState.js';
 
 export class Player {
   constructor() {
@@ -27,6 +28,10 @@ export class Player {
     this.isAttacking = false;
     this.attackTime = 0;
     this.attackDuration = 300;
+
+    this.attackCooldown = 500;
+    this.lastAttackInputTime = 0;
+
     this.attackDirection = 'none';
 
     this.coyoteTime = 150;
@@ -36,16 +41,9 @@ export class Player {
     this.canDoubleJump = true;
     this.hasDoubleJumped = false;
 
-    this.comboCount = 0;
-    this.lastAttackTime = 0;
-    this.lastAttackInputTime = 0;
-    this.attackCooldown = 300;
-    this.comboWindow = 800;
-    this.invulnerabilityTime = 0;
-    this.invulnerabilityDuration = 500;
-
-    this.facingDirection = 1;
-    this.hitStop = 0;
+    // Map system
+    this.mapState = new MapState();
+    this.isTransitioning = false;
   }
 
   canDash() {

@@ -1,8 +1,6 @@
-// --- COMPLETE AND UNABRIDGED FILE ---
-
 import { Game } from './core/Game.js';
 import { Entity } from './core/Entity.js';
-import { cheats } from './core/cheat.js';
+import { MapSystem } from './systems/MapSystem.js';
 import { Position } from './components/Position.js';
 import { Velocity } from './components/Velocity.js';
 import { Physics } from './components/Physics.js';
@@ -19,6 +17,7 @@ import { CombatSystem } from './systems/CombatSystem.js';
 import { RenderSystem } from './systems/RenderSystem.js';
 import { UISystem } from './systems/UISystem.js';
 import { bossDefinitions } from './entities/bossDefinitions.js';
+import { cheats } from './core/cheat.js'; // Assumindo que você tem este arquivo para cheats
 
 class ShadowKnight {
   constructor() {
@@ -33,10 +32,13 @@ class ShadowKnight {
 
       const soundsToLoad = {
         jump: 'assets/sounds/jump.wav', dash: 'assets/sounds/dash.wav', attack: 'assets/sounds/attack.wav',
-        parry: 'assets/sounds/parry.wav', enemyHit: 'assets/sounds/enemy_hit.wav', enemyDeath: 'assets/sounds/enemy_death.ogg',
+        parry: 'assets/sounds/parry.wav', enemyHit: 'assets/sounds/enemy_hit.wav', enemyDeath: 'assets/sounds/enemy_death.wav',
         playerHit: 'assets/sounds/player_hit.wav', bgm: 'assets/sounds/background_music.mp3',
       };
       await this.game.soundManager.loadSounds(soundsToLoad);
+
+      const mapSystem = new MapSystem();
+      mapSystem.init();
 
       this.game.addSystem(new MovementSystem());
       this.game.addSystem(new PlayerControlSystem());
@@ -45,20 +47,18 @@ class ShadowKnight {
       this.game.addSystem(new CombatSystem());
       this.game.addSystem(new RenderSystem());
       this.game.addSystem(new UISystem());
+      this.game.addSystem(mapSystem);
 
       this.createPlayer();
       this.createEnemies();
       this.createBoss();
 
+      // Força o estado correto da UI na inicialização
+      document.getElementById('main-menu').classList.remove('hidden');
+      document.getElementById('settings-modal').classList.add('hidden');
+
       document.getElementById('loading-screen').classList.add('hidden');
       console.log('Shadow Knight initialized. Waiting for player to start.');
-
-      // Make game instance available globally for volume controls
-      window.gameInstance = this.game;
-      // Apply saved volumes from localStorage
-      if (window.applySavedVolumes) {
-        window.applySavedVolumes();
-      }
 
     } catch (error) {
       console.error('Failed to initialize Shadow Knight:', error);
@@ -68,7 +68,6 @@ class ShadowKnight {
   setupUIEventListeners() {
     const mainMenu = document.getElementById('main-menu');
     const settingsModal = document.getElementById('settings-modal');
-    const cheatMenu = document.getElementById('cheat-menu');
     const startButton = document.getElementById('start-button');
     const settingsButton = document.getElementById('settings-button');
     const closeSettingsButton = document.getElementById('close-settings-button');
@@ -84,31 +83,33 @@ class ShadowKnight {
     settingsButton.addEventListener('click', () => settingsModal.classList.remove('hidden'));
     closeSettingsButton.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
-    // Volume controls are now handled by the HTML script section with applySavedVolumes
+    // Cheats (verifique se o elemento existe no seu HTML)
+    const infiniteHealthCheckbox = document.getElementById('infinite-health');
+    const infiniteStaminaCheckbox = document.getElementById('infinite-stamina');
+    const oneHitKillsCheckbox = document.getElementById('one-hit-kills');
 
-    document.getElementById('infinite-health').addEventListener('change', (e) => cheats.infiniteHealth = e.target.checked);
-    document.getElementById('infinite-stamina').addEventListener('change', (e) => cheats.infiniteStamina = e.target.checked);
-    document.getElementById('one-hit-kills').addEventListener('change', (e) => cheats.oneHitKills = e.target.checked);
+    if (infiniteHealthCheckbox) {
+      infiniteHealthCheckbox.addEventListener('change', (e) => cheats.infiniteHealth = e.target.checked);
+    }
+    if (infiniteStaminaCheckbox) {
+      infiniteStaminaCheckbox.addEventListener('change', (e) => cheats.infiniteStamina = e.target.checked);
+    }
+    if (oneHitKillsCheckbox) {
+      oneHitKillsCheckbox.addEventListener('change', (e) => cheats.oneHitKills = e.target.checked);
+    }
   }
 
   createPlayer() {
     this.player = new Entity('player');
-    this.player.addComponent('Position', new Position(300, 550));
+    this.player.addComponent('Position', new Position(300, 100));
     this.player.addComponent('Velocity', new Velocity(0, 0));
     this.player.addComponent('Physics', new Physics());
     const sprite = new Sprite({
-      width: 32,
-      height: 58,
-      color: '#4ecdc4',
+      imageSrc: 'https://placehold.co/256x64/4ecdc4/000000?text=Player',
+      width: 32, height: 58, frameWidth: 64, frameHeight: 58,
       offsetX: -16,
       offsetY: -29,
     });
-    sprite.addAnimation('idle', [0], 300, true);
-    sprite.addAnimation('run', [0, 1], 200, true);
-    sprite.addAnimation('jump', [0], 100, false);
-    sprite.addAnimation('fall', [0], 100, false);
-    sprite.addAnimation('attack', [0], 100, false);
-    sprite.playAnimation('idle');
     this.player.addComponent('Sprite', sprite);
     this.player.addComponent('Player', new Player());
     this.player.addComponent('Collision', new Collision(32, 58, -16, -29));
@@ -168,23 +169,6 @@ class ShadowKnight {
     this.game.addEntity(boss);
     console.log(`${bossDef.name} has been summoned!`);
     return boss;
-  }
-
-  showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.position = 'absolute';
-    errorDiv.style.top = '50%';
-    errorDiv.style.left = '50%';
-    errorDiv.style.transform = 'translate(-50%, -50%)';
-    errorDiv.style.background = 'rgba(255, 0, 0, 0.8)';
-    errorDiv.style.color = 'white';
-    errorDiv.style.padding = '20px';
-    errorDiv.style.borderRadius = '5px';
-    errorDiv.style.fontFamily = 'monospace';
-    errorDiv.style.fontSize = '16px';
-    errorDiv.style.zIndex = '10000';
-    errorDiv.textContent = message;
-    document.body.appendChild(errorDiv);
   }
 }
 

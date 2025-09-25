@@ -74,39 +74,37 @@
             </div>
         </div>
         
-        <canvas id="game-canvas" width="1280" height="720"></canvas>
+        <canvas id="game-canvas"></canvas>
         
         <div id="ui-overlay" class="hidden">
             <div id="hud">
                 <div class="health-bar">
                     <div class="health-fill" id="health-fill"></div>
-                    <span class="health-text">100/100</span>
+                    <span class="health-text" id="health-text">100/100</span>
                 </div>
                 <div class="stamina-bar">
                     <div class="stamina-fill" id="stamina-fill"></div>
                 </div>
             </div>
             
-            <div id="controls-hint" class="controls">
+            <div id="controls-hint">
                 <div>WASD/Arrow Keys: Move</div>
                 <div>K: Jump</div>
                 <div>L: Dash</div>
                 <div>J: Attack</div>
+                <div>M: Map</div>
                 <div>F3: Debug Mode</div>
                 <div>F4: Toggle Cheats</div>
             </div>
         </div>
     </div>
+
+    <div id="map-overlay" class="hidden">
+        <div id="map-grid"></div>
+    </div>
     
     <script>
-        // Sistema de volume ROBUSTO com debug
-        let volumes = {
-            master: 50,
-            bgm: 30,
-            sfx: 100
-        };
-
-        // Carregar volumes salvos
+        let volumes = { master: 50, bgm: 30, sfx: 100 };
         function loadSavedVolumes() {
             try {
                 const saved = {
@@ -114,93 +112,49 @@
                     bgm: localStorage.getItem('shadowknight-bgm-volume'),
                     sfx: localStorage.getItem('shadowknight-sfx-volume')
                 };
-                
-                console.log('Loading saved volumes:', saved);
-                
                 if (saved.master !== null) volumes.master = Math.max(0, Math.min(100, parseInt(saved.master)));
                 if (saved.bgm !== null) volumes.bgm = Math.max(0, Math.min(100, parseInt(saved.bgm)));
                 if (saved.sfx !== null) volumes.sfx = Math.max(0, Math.min(100, parseInt(saved.sfx)));
-                
-                console.log('Final loaded volumes:', volumes);
-            } catch (error) {
-                console.error('Error loading volumes:', error);
-            }
+            } catch (e) { console.error('Error loading volumes:', e); }
         }
-
-        // Salvar volume
         function saveVolume(type, value) {
-            try {
-                localStorage.setItem(`shadowknight-${type}-volume`, value);
-                console.log(`Saved ${type} volume: ${value}`);
-            } catch (error) {
-                console.error('Error saving volume:', error);
-            }
+            try { localStorage.setItem(`shadowknight-${type}-volume`, value); } catch (e) { console.error('Error saving volume:', e); }
         }
-
-        // Aplicar volume no jogo
         function applyVolume(type, value) {
             if (window.gameInstance && window.gameInstance.soundManager) {
                 const normalizedValue = value / 100;
                 switch(type) {
-                    case 'master':
-                        window.gameInstance.soundManager.setMasterVolume(normalizedValue);
-                        break;
-                    case 'bgm':
-                        window.gameInstance.soundManager.setBGMVolume(normalizedValue);
-                        break;
-                    case 'sfx':
-                        window.gameInstance.soundManager.setSFXVolume(normalizedValue);
-                        break;
+                    case 'master': window.gameInstance.soundManager.setMasterVolume(normalizedValue); break;
+                    case 'bgm': window.gameInstance.soundManager.setBGMVolume(normalizedValue); break;
+                    case 'sfx': window.gameInstance.soundManager.setSFXVolume(normalizedValue); break;
                 }
-                console.log(`Applied ${type} volume: ${normalizedValue} (${value}%)`);
             }
         }
-
-        // Atualizar display
         function updateDisplay(type, value) {
             const input = document.getElementById(type + '-volume-input');
-            if (input) {
-                input.value = value;
-            }
+            if (input) input.value = value;
         }
-
-        // Mudar volume com botões
         function changeVolume(type, delta) {
             const newValue = Math.max(0, Math.min(100, volumes[type] + delta));
-            console.log(`Changing ${type} from ${volumes[type]} to ${newValue} (delta: ${delta})`);
-            
             volumes[type] = newValue;
             updateDisplay(type, newValue);
             saveVolume(type, newValue);
             applyVolume(type, newValue);
         }
-
-        // Definir volume diretamente
         function setVolume(type, inputValue) {
             const newValue = Math.max(0, Math.min(100, parseInt(inputValue) || 0));
-            console.log(`Setting ${type} directly to ${newValue} (input was: ${inputValue})`);
-            
             volumes[type] = newValue;
             updateDisplay(type, newValue);
             saveVolume(type, newValue);
             applyVolume(type, newValue);
         }
-
-        // Inicializar quando página carrega
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded, initializing volumes...');
             loadSavedVolumes();
-            
             updateDisplay('master', volumes.master);
             updateDisplay('bgm', volumes.bgm);
             updateDisplay('sfx', volumes.sfx);
-            
-            console.log('Volume displays updated');
         });
-
-        // Aplicar volumes quando jogo inicializar
         window.applySavedVolumes = function() {
-            console.log('Applying saved volumes to game...');
             applyVolume('master', volumes.master);
             applyVolume('bgm', volumes.bgm);
             applyVolume('sfx', volumes.sfx);

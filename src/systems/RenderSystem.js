@@ -13,7 +13,7 @@ export class RenderSystem {
 
     render(ctx) {
         // --- Draw Ground ---
-        ctx.fillStyle = '#333';
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(
             0,
             620,
