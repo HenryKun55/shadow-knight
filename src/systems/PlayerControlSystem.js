@@ -31,7 +31,6 @@ export class PlayerControlSystem {
         return;
       }
 
-      this.handleMapInput(player);
       this.handleMovementInput(player, velocity, physics, sprite);
       this.handleCombatInput(player, physics);
       player.updateTimers(deltaTime);
@@ -61,26 +60,16 @@ export class PlayerControlSystem {
     }
   }
 
-  handleMapInput(player) {
-    const input = this.game.inputManager;
-    const mapSystem = this.game.getSystem('MapSystem');
-
-    if (!mapSystem) return;
-
-    if (input.isKeyPressed('KeyM')) {
-      if (player.mapState.isOpen) {
-        player.mapState.closeMap();
-        mapSystem.hideMap();
-      } else {
-        player.mapState.openMap();
-        mapSystem.showMap(player.mapState);
-      }
-    }
-  }
 
   handleMovementInput(player, velocity, physics, sprite) {
     const input = this.game.inputManager;
     let moveDirection = 0;
+    
+    // Verifica se o mapa está aberto (hold to view)
+    const mapSystem = this.game.getSystem('MapSystem');
+    const isViewingMap = mapSystem && mapSystem.isMapOpen();
+    
+    // Movimento horizontal sempre permitido
     if (input.isKeyDown('KeyA') || input.isKeyDown('ArrowLeft')) moveDirection -= 1;
     if (input.isKeyDown('KeyD') || input.isKeyDown('ArrowRight')) moveDirection += 1;
 
@@ -89,35 +78,38 @@ export class PlayerControlSystem {
         player.facingDirection = moveDirection;
         let speed = player.speed;
 
-        // Slow movement when map is open
-        if (player.mapState.isOpen) {
-          speed *= player.mapState.slowMovementFactor;
+        // Movimento mais lento quando vendo mapa
+        if (isViewingMap) {
+          speed *= 0.4; // Velocidade reduzida enquanto vê mapa
         }
 
         velocity.x = moveDirection * speed;
         if (sprite) sprite.flipX = moveDirection < 0;
       } else {
-        velocity.x *= physics.onGround ? 0.6 : 0.98; // Increased ground deceleration
+        velocity.x *= physics.onGround ? 0.6 : 0.98;
       }
     }
 
-    if (input.isKeyPressed('KeyK')) {
-      player.lastJumpInput = Date.now();
-    }
-
-    if (player.canJump(physics)) {
-      if (player.jump(physics)) {
-        velocity.y = -player.jumpPower;
-        this.game.soundManager.play('jump');
-        player.lastJumpInput = 0;
+    // Pulo e dash desabilitados quando vendo mapa
+    if (!isViewingMap) {
+      if (input.isKeyPressed('KeyK')) {
+        player.lastJumpInput = Date.now();
       }
-    }
 
-    if (input.isKeyPressed('KeyL')) {
-      if (player.startDash()) {
-        velocity.x = player.facingDirection * player.dashSpeed;
-        velocity.y = 0;
-        this.game.soundManager.play('dash');
+      if (player.canJump(physics)) {
+        if (player.jump(physics)) {
+          velocity.y = -player.jumpPower;
+          this.game.soundManager.play('jump');
+          player.lastJumpInput = 0;
+        }
+      }
+
+      if (input.isKeyPressed('KeyL')) {
+        if (player.startDash()) {
+          velocity.x = player.facingDirection * player.dashSpeed;
+          velocity.y = 0;
+          this.game.soundManager.play('dash');
+        }
       }
     }
   }

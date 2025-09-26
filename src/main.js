@@ -6,6 +6,7 @@ import { Velocity } from './components/Velocity.js';
 import { Physics } from './components/Physics.js';
 import { Sprite } from './components/Sprite.js';
 import { Player } from './components/Player.js';
+import { MapState } from './components/MapState.js';
 import { Enemy, EnemyTypes } from './components/Enemy.js';
 import { Boss } from './components/Boss.js';
 import { Collision } from './components/Collision.js';
@@ -16,6 +17,7 @@ import { BossAISystem } from './systems/BossAISystem.js';
 import { CombatSystem } from './systems/CombatSystem.js';
 import { RenderSystem } from './systems/RenderSystem.js';
 import { UISystem } from './systems/UISystem.js';
+import { RoomTransitionSystem } from './systems/RoomTransitionSystem.js';
 import { bossDefinitions } from './entities/bossDefinitions.js';
 import { cheats } from './core/cheat.js'; // Assumindo que você tem este arquivo para cheats
 
@@ -40,6 +42,10 @@ class ShadowKnight {
       const mapSystem = new MapSystem();
       mapSystem.init();
 
+      const roomTransitionSystem = new RoomTransitionSystem();
+      roomTransitionSystem.game = this.game;
+      roomTransitionSystem.init();
+
       this.game.addSystem(new MovementSystem());
       this.game.addSystem(new PlayerControlSystem());
       this.game.addSystem(new EnemyAISystem());
@@ -48,10 +54,24 @@ class ShadowKnight {
       this.game.addSystem(new RenderSystem());
       this.game.addSystem(new UISystem());
       this.game.addSystem(mapSystem);
+      this.game.addSystem(roomTransitionSystem);
 
       this.createPlayer();
-      this.createEnemies();
-      this.createBoss();
+      
+      // Room spawning methods for RoomTransitionSystem
+      this.game.spawnRoomEnemies = (enemies) => {
+        enemies.forEach(enemy => {
+          this.createEnemy(enemy.type, enemy.x, enemy.y, this.getEnemyStats(enemy.type));
+        });
+      };
+      
+      this.game.spawnRoomBosses = (bosses) => {
+        bosses.forEach(boss => {
+          if (boss.type === 'shadowLord') {
+            this.createBoss(boss.x, boss.y);
+          }
+        });
+      };
 
       // Força o estado correto da UI na inicialização
       document.getElementById('main-menu').classList.remove('hidden');
@@ -73,11 +93,43 @@ class ShadowKnight {
     const closeSettingsButton = document.getElementById('close-settings-button');
     const uiOverlay = document.getElementById('ui-overlay');
 
-    startButton.addEventListener('click', () => {
+    startButton.addEventListener('click', async () => {
+      // Criar fade overlay para inicialização
+      const gameStartFade = document.createElement('div');
+      gameStartFade.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: black;
+        opacity: 0;
+        z-index: 10000;
+        transition: opacity 0.8s ease-in-out;
+        pointer-events: none;
+      `;
+      document.body.appendChild(gameStartFade);
+      
+      // Fade out
+      gameStartFade.style.opacity = '1';
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Esconde menu e mostra jogo
       mainMenu.classList.add('hidden');
       uiOverlay.classList.remove('hidden');
       this.game.start();
       this.game.soundManager.playBGM('bgm');
+      
+      // Pequena pausa e fade in
+      await new Promise(resolve => setTimeout(resolve, 300));
+      gameStartFade.style.opacity = '0';
+      
+      // Remove fade overlay após animação
+      setTimeout(() => {
+        if (gameStartFade.parentNode) {
+          gameStartFade.parentNode.removeChild(gameStartFade);
+        }
+      }, 800);
     });
 
     settingsButton.addEventListener('click', () => settingsModal.classList.remove('hidden'));
@@ -101,7 +153,7 @@ class ShadowKnight {
 
   createPlayer() {
     this.player = new Entity('player');
-    this.player.addComponent('Position', new Position(300, 100));
+    this.player.addComponent('Position', new Position(100, 550)); // Start in room 0 at entrance
     this.player.addComponent('Velocity', new Velocity(0, 0));
     this.player.addComponent('Physics', new Physics());
     const sprite = new Sprite({
@@ -112,14 +164,22 @@ class ShadowKnight {
     });
     this.player.addComponent('Sprite', sprite);
     this.player.addComponent('Player', new Player());
+    this.player.addComponent('MapState', new MapState());
     this.player.addComponent('Collision', new Collision(32, 58, -16, -29));
     this.game.addEntity(this.player);
     this.game.setCameraTarget(this.player);
   }
 
+  getEnemyStats(type) {
+    switch (type) {
+      case 'goblin': return EnemyTypes.GOBLIN;
+      case 'orc': return EnemyTypes.ORC;
+      default: return EnemyTypes.GOBLIN;
+    }
+  }
+
   createEnemies() {
-    this.createEnemy('goblin', 1000, 600, EnemyTypes.GOBLIN);
-    this.createEnemy('orc', 1500, 590, EnemyTypes.ORC);
+    // Enemies now spawned by room system
   }
 
   createEnemy(type, x, y, stats) {
@@ -149,10 +209,10 @@ class ShadowKnight {
     return enemy;
   }
 
-  createBoss() {
+  createBoss(x = 2400, y = 580) {
     const bossDef = bossDefinitions.shadowLord;
     const boss = new Entity(bossDef.name);
-    boss.addComponent('Position', new Position(2400, 580));
+    boss.addComponent('Position', new Position(x, y));
     boss.addComponent('Velocity', new Velocity(0, 0));
     boss.addComponent('Physics', new Physics({ gravity: 980, mass: 3 }));
     const sprite = new Sprite(bossDef.spriteOptions);

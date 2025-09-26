@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shadow Knight - Mechanically Delicious 2D Action</title>
+    <link rel="stylesheet" href="./styles/variables.css">
     <link rel="stylesheet" href="./styles/main.css">
 </head>
 <body>
@@ -50,6 +51,16 @@
                         <input type="number" id="sfx-volume-input" min="0" max="100" value="100" onchange="setVolume('sfx', this.value)" class="volume-input">
                         <button class="volume-btn" onclick="changeVolume('sfx', 1)">+</button>
                         <button class="volume-btn" onclick="changeVolume('sfx', 10)">++</button>
+                    </div>
+                </div>
+                <div class="setting resolution-setting">
+                    <label>Screen Resolution</label>
+                    <div class="resolution-buttons">
+                        <button class="resolution-btn active" onclick="setResolutionButton('1280x720')">HD</button>
+                        <button class="resolution-btn" onclick="setResolutionButton('1600x900')">HD+</button>
+                        <button class="resolution-btn" onclick="setResolutionButton('1920x1080')">FHD</button>
+                        <button class="resolution-btn" onclick="setResolutionButton('2560x1440')">2K</button>
+                        <button class="resolution-btn" onclick="setResolutionButton('3840x2160')">4K</button>
                     </div>
                 </div>
                 <button id="close-settings-button" class="menu-button">Close</button>
@@ -103,46 +114,86 @@
         <div id="map-grid"></div>
     </div>
     
-    <script>
-        let volumes = { master: 50, bgm: 30, sfx: 100 };
+    <script type="module">
+        // Import configurations
+        import { GameConfig } from './src/config/GameConfig.js';
+        import { UIConstants } from './src/config/UIConstants.js';
+        import { AudioConfig } from './src/config/AudioConfig.js';
+        
+        // Initialize volumes from configuration
+        let volumes = {
+            master: GameConfig.AUDIO.DEFAULT_VOLUMES.MASTER,
+            bgm: GameConfig.AUDIO.DEFAULT_VOLUMES.BGM,
+            sfx: GameConfig.AUDIO.DEFAULT_VOLUMES.SFX
+        };
+        
+        // Initialize resolution from configuration
+        let currentResolution = UIConstants.RESOLUTIONS.HD.key;
         function loadSavedVolumes() {
             try {
                 const saved = {
-                    master: localStorage.getItem('shadowknight-master-volume'),
-                    bgm: localStorage.getItem('shadowknight-bgm-volume'),
-                    sfx: localStorage.getItem('shadowknight-sfx-volume')
+                    master: localStorage.getItem(AudioConfig.STORAGE_KEYS.MASTER_VOLUME),
+                    bgm: localStorage.getItem(AudioConfig.STORAGE_KEYS.BGM_VOLUME),
+                    sfx: localStorage.getItem(AudioConfig.STORAGE_KEYS.SFX_VOLUME)
                 };
-                if (saved.master !== null) volumes.master = Math.max(0, Math.min(100, parseInt(saved.master)));
-                if (saved.bgm !== null) volumes.bgm = Math.max(0, Math.min(100, parseInt(saved.bgm)));
-                if (saved.sfx !== null) volumes.sfx = Math.max(0, Math.min(100, parseInt(saved.sfx)));
-            } catch (e) { console.error('Error loading volumes:', e); }
+                
+                // Use UIConstants for validation
+                const { MIN, MAX } = UIConstants.VOLUME;
+                if (saved.master !== null) volumes.master = Math.max(MIN, Math.min(MAX, parseInt(saved.master)));
+                if (saved.bgm !== null) volumes.bgm = Math.max(MIN, Math.min(MAX, parseInt(saved.bgm)));
+                if (saved.sfx !== null) volumes.sfx = Math.max(MIN, Math.min(MAX, parseInt(saved.sfx)));
+            } catch (e) { 
+                console.error(AudioConfig.ERRORS.MESSAGES.LOAD_FAILED, e); 
+            }
         }
+        
         function saveVolume(type, value) {
-            try { localStorage.setItem(`shadowknight-${type}-volume`, value); } catch (e) { console.error('Error saving volume:', e); }
+            try { 
+                const storageKey = AudioConfig.STORAGE_KEYS[`${type.toUpperCase()}_VOLUME`];
+                localStorage.setItem(storageKey, value); 
+            } catch (e) { 
+                console.error('Error saving volume:', e); 
+            }
         }
         function applyVolume(type, value) {
             if (window.gameInstance && window.gameInstance.soundManager) {
-                const normalizedValue = value / 100;
+                // Use AudioUtils for proper volume conversion
+                const normalizedValue = AudioConfig.AudioUtils ? 
+                    AudioConfig.AudioUtils.percentageToVolume(value) : 
+                    value / 100;
+                
                 switch(type) {
-                    case 'master': window.gameInstance.soundManager.setMasterVolume(normalizedValue); break;
-                    case 'bgm': window.gameInstance.soundManager.setBGMVolume(normalizedValue); break;
-                    case 'sfx': window.gameInstance.soundManager.setSFXVolume(normalizedValue); break;
+                    case 'master': 
+                        window.gameInstance.soundManager.setMasterVolume(normalizedValue); 
+                        break;
+                    case 'bgm': 
+                        window.gameInstance.soundManager.setBGMVolume(normalizedValue); 
+                        break;
+                    case 'sfx': 
+                        window.gameInstance.soundManager.setSFXVolume(normalizedValue); 
+                        break;
                 }
             }
         }
+        
         function updateDisplay(type, value) {
-            const input = document.getElementById(type + '-volume-input');
+            const selector = `#${type}-volume-input`;
+            const input = UIConstants.UTILS.safeQuerySelector(selector);
             if (input) input.value = value;
         }
+        
         function changeVolume(type, delta) {
-            const newValue = Math.max(0, Math.min(100, volumes[type] + delta));
+            const { MIN, MAX } = UIConstants.VOLUME;
+            const newValue = Math.max(MIN, Math.min(MAX, volumes[type] + delta));
             volumes[type] = newValue;
             updateDisplay(type, newValue);
             saveVolume(type, newValue);
             applyVolume(type, newValue);
         }
+        
         function setVolume(type, inputValue) {
-            const newValue = Math.max(0, Math.min(100, parseInt(inputValue) || 0));
+            const { MIN, MAX } = UIConstants.VOLUME;
+            const newValue = Math.max(MIN, Math.min(MAX, parseInt(inputValue) || 0));
             volumes[type] = newValue;
             updateDisplay(type, newValue);
             saveVolume(type, newValue);
@@ -153,12 +204,103 @@
             updateDisplay('master', volumes.master);
             updateDisplay('bgm', volumes.bgm);
             updateDisplay('sfx', volumes.sfx);
+            
+            loadSavedResolution();
+            updateResolutionDisplay();
         });
         window.applySavedVolumes = function() {
             applyVolume('master', volumes.master);
             applyVolume('bgm', volumes.bgm);
             applyVolume('sfx', volumes.sfx);
         };
+        
+        function loadSavedResolution() {
+            try {
+                const saved = localStorage.getItem(GameConfig.STORAGE.KEYS.RESOLUTION);
+                if (saved && Object.values(UIConstants.RESOLUTIONS).some(res => res.key === saved)) {
+                    currentResolution = saved;
+                }
+            } catch (e) { 
+                console.error('Error loading resolution:', e); 
+            }
+        }
+        
+        function saveResolution(resolution) {
+            try { 
+                localStorage.setItem(GameConfig.STORAGE.KEYS.RESOLUTION, resolution); 
+            } catch (e) { 
+                console.error('Error saving resolution:', e); 
+            }
+        }
+        
+        function changeResolution(resolution) {
+            currentResolution = resolution;
+            saveResolution(resolution);
+            if (window.gameInstance) {
+                window.gameInstance.setResolution(resolution);
+            }
+        }
+        
+        function updateResolutionDisplay() {
+            const buttons = UIConstants.UTILS.safeQuerySelectorAll(UIConstants.SELECTORS.RESOLUTION_BUTTONS);
+            buttons.forEach(btn => btn.classList.remove(UIConstants.CLASSES.ACTIVE));
+            
+            const activeBtn = document.querySelector(`[onclick="setResolutionButton('${currentResolution}')"]`);
+            if (activeBtn) activeBtn.classList.add(UIConstants.CLASSES.ACTIVE);
+        }
+        
+        function setResolutionButton(resolution) {
+            // Validate resolution exists in configuration
+            const isValidResolution = Object.values(UIConstants.RESOLUTIONS).some(res => res.key === resolution);
+            if (!isValidResolution) {
+                console.warn(`Invalid resolution: ${resolution}`);
+                return;
+            }
+            
+            currentResolution = resolution;
+            updateResolutionDisplay();
+            saveResolution(resolution);
+            if (window.gameInstance) {
+                window.gameInstance.setResolution(resolution);
+            }
+        }
+        
+        window.getCurrentResolution = function() {
+            return currentResolution;
+        };
+        
+        // Adicionar controle de modal-open class
+        function setModalState(isOpen) {
+            if (isOpen) {
+                document.body.classList.add('modal-open');
+            } else {
+                document.body.classList.remove('modal-open');
+            }
+        }
+        
+        // Observer para detectar quando modais abrem/fecham
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.target.classList.contains('modal') && mutation.attributeName === 'class') {
+                    const isHidden = mutation.target.classList.contains('hidden');
+                    if (!isHidden) {
+                        setModalState(true);
+                    } else {
+                        // Verifica se algum modal ainda está aberto
+                        const openModals = document.querySelectorAll('.modal:not(.hidden)');
+                        setModalState(openModals.length > 0);
+                    }
+                }
+            });
+        });
+        
+        // Observar mudanças nos modais
+        document.addEventListener('DOMContentLoaded', function() {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+            });
+        });
     </script>
     <script type="module" src="./src/main.js"></script>
 </body>

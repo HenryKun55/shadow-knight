@@ -1,3 +1,10 @@
+/* ===================================
+   MAIN STYLES - SHADOW KNIGHT GAME
+   ===================================
+   Main stylesheet using CSS variables for consistent theming.
+   All values reference variables defined in variables.css
+*/
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -5,12 +12,20 @@
 }
 
 body {
-    font-family: 'Courier New', monospace;
-    background: #0a0a0a;
-    color: #ffffff;
+    font-family: var(--font-family-primary);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
     overflow: hidden;
     user-select: none;
 }
+
+/* Permitir interação nos modais */
+.modal-content * {
+    user-select: auto;
+    pointer-events: auto;
+}
+
+/* ==================== GAME CONTAINER ==================== */
 
 #game-container {
     position: relative;
@@ -19,20 +34,28 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #000;
+    background: var(--color-bg-primary);
 }
 
 #game-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
-  position: relative;
-  z-index: 1;
+    display: block;
+    width: 100%;
+    height: 100%;
+    box-shadow: var(--shadow-game-canvas);
+    position: fixed;
+    z-index: var(--z-index-canvas);
+    pointer-events: auto;
 }
 
+/* Desabilitar eventos do canvas quando modais estão abertos */
+.modal-open #game-canvas {
+    pointer-events: none;
+}
+
+/* ==================== MODALS & MENUS ==================== */
+
 #loading-screen, #main-menu, #settings-modal, #cheat-menu {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
@@ -41,8 +64,8 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: rgba(10, 10, 20, 0.95);
-    z-index: 1000;
+    background: var(--bg-alpha-modal);
+    z-index: var(--z-index-modal);
     backdrop-filter: blur(5px);
 }
 
@@ -54,91 +77,205 @@ body {
 }
 
 #main-menu h1 {
-    font-size: 5rem;
-    color: #ff4757;
-    text-shadow: 0 0 15px #ff4757, 0 0 5px white;
-    margin-bottom: 40px;
+    font-size: var(--font-size-game-title);
+    color: var(--color-primary-red);
+    text-shadow: var(--text-shadow-glow);
+    margin-bottom: var(--space-4xl);
 }
 
 .menu-button {
-    font-size: 1.5rem;
-    padding: 15px 40px;
-    margin: 10px;
+    font-size: var(--font-size-button);
+    padding: var(--space-button-padding);
+    margin: var(--space-sm);
     cursor: pointer;
-    background: #1a1a2e;
-    border: 2px solid #555;
-    color: #ddd;
-    transition: all 0.2s ease-in-out;
+    background: var(--color-bg-secondary);
+    border: var(--border-width-normal) solid var(--color-border-primary);
+    color: var(--color-text-secondary);
+    transition: var(--transition-button);
     letter-spacing: 2px;
+    border-radius: var(--border-radius-sm);
 }
 
 .menu-button:hover {
-    background: #ff4757;
-    border-color: #ff6b6b;
-    color: white;
+    background: var(--color-primary-red);
+    border-color: var(--color-primary-red-light);
+    color: var(--color-text-primary);
     transform: scale(1.05);
 }
 
+/* ==================== MODAL CONTENT ==================== */
+
 .modal-content {
-    background: #16213e;
-    padding: 40px;
-    border: 2px solid #555;
-    border-radius: 10px;
-    min-width: 400px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    background: var(--color-bg-tertiary);
+    padding: var(--space-modal-padding);
+    border: var(--border-width-normal) solid var(--color-border-primary);
+    border-radius: var(--border-radius-lg);
+    min-width: var(--modal-min-width);
+    box-shadow: var(--shadow-lg);
+    pointer-events: auto;
+    position: relative;
+    z-index: var(--z-index-modal-content);
 }
 
 .modal-content h2 {
     text-align: center;
-    margin-bottom: 30px;
-    font-size: 2rem;
+    margin-bottom: var(--space-2xl);
+    font-size: var(--font-size-modal-title);
+    color: var(--color-text-primary);
 }
 
 .setting {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
+    margin-bottom: var(--space-lg);
 }
 
+.setting label {
+    font-size: var(--font-size-xl);
+    color: var(--color-text-secondary);
+    min-width: 150px;
+}
+
+/* ==================== FORM CONTROLS ==================== */
+
+.setting select {
+    background: var(--color-bg-secondary);
+    border: var(--border-width-normal) solid var(--color-border-primary);
+    color: var(--color-text-secondary);
+    padding: var(--space-input-padding);
+    font-size: var(--font-size-lg);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: var(--transition-button);
+    min-width: 200px;
+    pointer-events: auto;
+    position: relative;
+    z-index: var(--z-index-tooltip);
+}
+
+.setting select:hover {
+    border-color: var(--color-border-secondary);
+    background: var(--color-bg-secondary);
+}
+
+.setting select:focus {
+    outline: none;
+    border-color: var(--color-border-focus);
+    box-shadow: 0 0 5px rgba(255, 71, 87, 0.3);
+}
+
+.setting select option {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    padding: var(--space-sm);
+}
+
+/* ==================== RESOLUTION CONTROLS ==================== */
+
+.resolution-setting {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+}
+
+.resolution-buttons {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.resolution-btn {
+    background: var(--color-bg-secondary);
+    border: var(--border-width-normal) solid var(--color-border-primary);
+    color: var(--color-text-secondary);
+    padding: var(--space-sm) var(--space-lg);
+    font-size: var(--font-size-base);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: var(--transition-button);
+    min-width: 50px;
+}
+
+.resolution-btn:hover {
+    border-color: var(--color-border-secondary);
+    background: var(--color-bg-secondary);
+}
+
+.resolution-btn.active {
+    background: var(--color-primary-red);
+    border-color: var(--color-primary-red-light);
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-bold);
+}
+
+/* ==================== UI OVERLAY & HUD ==================== */
+
 #ui-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 2;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: var(--z-index-ui-overlay);
 }
 
 #hud {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+    position: absolute;
+    top: var(--space-xl);
+    left: var(--space-xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
 }
 
 #controls-hint {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  font-size: 14px;
-  text-align: right;
-  color: rgba(255, 255, 255, 0.7);
-  text-shadow: 1px 1px 2px #000;
+    position: fixed;
+    bottom: var(--space-xl);
+    right: var(--space-xl);
+    font-size: var(--font-size-controls);
+    text-align: right;
+    color: var(--color-text-muted);
+    text-shadow: var(--text-shadow-sm);
+    background: var(--bg-alpha-controls);
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--border-radius-md);
+    border: var(--border-width-thin) solid var(--color-border-light);
+    backdrop-filter: blur(5px);
+    line-height: var(--line-height-normal);
+    z-index: var(--z-index-controls);
+    pointer-events: none;
 }
+
+/* ==================== HEALTH & STAMINA BARS ==================== */
 
 .health-bar, .stamina-bar {
-    width: 300px; height: 25px; background: rgba(0, 0, 0, 0.7);
-    border: 2px solid #444; border-radius: 5px; overflow: hidden;
+    width: var(--health-bar-width);
+    height: var(--health-bar-height);
+    background: var(--bg-alpha-overlay);
+    border: var(--border-width-normal) solid var(--color-border-secondary);
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
     position: relative;
 }
-.stamina-bar { width: 250px; height: 15px; }
 
-.health-fill { height: 100%; background: linear-gradient(90deg, #c0392b, #e74c3c); transition: width 0.3s ease; }
-.stamina-fill { height: 100%; background: linear-gradient(90deg, #27ae60, #2ecc71); transition: width 0.2s ease; }
+.stamina-bar {
+    width: var(--stamina-bar-width);
+    height: var(--stamina-bar-height);
+}
+
+.health-fill {
+    height: 100%;
+    background: var(--color-health-gradient);
+    transition: width var(--transition-slow) ease;
+}
+
+.stamina-fill {
+    height: 100%;
+    background: var(--color-stamina-gradient);
+    transition: width var(--transition-normal) ease;
+}
 
 .health-text {
     position: absolute;
@@ -147,61 +284,86 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 14px;
-    font-weight: bold;
-    text-shadow: 1px 1px 2px #000;
-    color: #fff;
+    font-size: var(--font-size-health-text);
+    font-weight: var(--font-weight-bold);
+    text-shadow: var(--text-shadow-sm);
+    color: var(--color-text-primary);
     pointer-events: none;
 }
 
+/* ==================== CHEAT MENU ==================== */
+
 #cheat-menu .modal-content {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
-    background: rgba(0,0,0,0.7);
-    border: 1px solid #444;
-    padding: 10px;
-    font-size: 12px;
+    bottom: var(--space-xl);
+    left: var(--space-xl);
+    background: var(--bg-alpha-overlay);
+    border: var(--border-width-thin) solid var(--color-border-secondary);
+    padding: var(--space-sm);
+    font-size: var(--font-size-sm);
+    border-radius: var(--border-radius-sm);
 }
+
+/* ==================== UTILITY CLASSES ==================== */
 
 .hidden {
     display: none !important;
 }
 
-/* Map styles */
+/* ==================== MAP STYLES ==================== */
+
 #map-overlay {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.85);
-    border: 2px solid #ccc;
-    padding: 20px;
-    border-radius: 10px;
-    z-index: 100;
+    background-color: var(--bg-alpha-overlay);
+    border: var(--border-width-normal) solid var(--color-border-light);
+    padding: var(--space-xl);
+    border-radius: var(--border-radius-lg);
+    z-index: var(--z-index-ui-overlay);
 }
 
 #map-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    grid-template-rows: repeat(5, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(var(--map-grid-columns), 1fr);
+    grid-template-rows: repeat(var(--map-grid-rows), 1fr);
+    gap: var(--map-grid-gap);
 }
 
 .map-room {
-    width: 80px;
-    height: 60px;
-    border: 1px solid #555;
+    width: var(--map-room-width);
+    height: var(--map-room-height);
+    border: var(--border-width-thin) solid var(--color-border-primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: monospace;
-    font-size: 12px;
-    color: white;
-    transition: all 0.3s ease;
+    font-family: var(--font-family-ui);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    transition: var(--transition-slow) ease;
+    border-radius: var(--border-radius-sm);
 }
 
-.map-room.unexplored { background-color: #222; color: #666; border-color: #444; }
-.map-room.visited { background-color: #3a506b; border-color: #5bc0be; }
-.map-room.current { background-color: #fca311; border-color: #fff; box-shadow: 0 0 15px #fca311; font-weight: bold; }
-.map-room.boss { border-color: #e71d36; color: #e71d36; }
+.map-room.unexplored {
+    background-color: var(--color-map-unexplored);
+    color: var(--color-text-disabled);
+    border-color: var(--color-map-border-unexplored);
+}
+
+.map-room.visited {
+    background-color: var(--color-map-visited);
+    border-color: var(--color-map-border-visited);
+}
+
+.map-room.current {
+    background-color: var(--color-map-current);
+    border-color: var(--color-map-border-current);
+    box-shadow: var(--shadow-glow-map);
+    font-weight: var(--font-weight-bold);
+}
+
+.map-room.boss {
+    border-color: var(--color-map-boss);
+    color: var(--color-map-boss);
+}

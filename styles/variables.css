@@ -1,0 +1,269 @@
+/* ===================================
+   CSS VARIABLES - SHADOW KNIGHT GAME
+   ===================================
+   Centralized design system variables for consistent theming
+   and easy maintenance across the entire project.
+*/
+
+:root {
+  /* ==================== COLORS ==================== */
+  
+  /* Primary Brand Colors */
+  --color-primary-red: #ff4757;
+  --color-primary-red-light: #ff6b6b;
+  --color-primary-red-dark: #e74c3c;
+  
+  /* Background Colors */
+  --color-bg-primary: #0a0a0a;
+  --color-bg-secondary: #1a1a2e;
+  --color-bg-tertiary: #16213e;
+  --color-bg-dark: #0f0f23;
+  
+  /* Text Colors */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #dddddd;
+  --color-text-muted: rgba(255, 255, 255, 0.7);
+  --color-text-disabled: rgba(255, 255, 255, 0.5);
+  
+  /* Border Colors */
+  --color-border-primary: #555555;
+  --color-border-secondary: #444444;
+  --color-border-light: rgba(255, 255, 255, 0.2);
+  --color-border-focus: var(--color-primary-red);
+  
+  /* Game Element Colors */
+  --color-health: #e74c3c;
+  --color-health-gradient: linear-gradient(90deg, #c0392b, #e74c3c);
+  --color-stamina: #2ecc71;
+  --color-stamina-gradient: linear-gradient(90deg, #27ae60, #2ecc71);
+  
+  /* Player Colors */
+  --color-player: #4ecdc4;
+  --color-player-damage: #ffffff;
+  
+  /* Enemy Colors */
+  --color-enemy-goblin: #2ed573;
+  --color-enemy-orc: #ff4757;
+  --color-enemy-shadow: #5f27cd;
+  --color-enemy-knight: #747d8c;
+  --color-enemy-generic: #ff6b6b;
+  
+  /* Map Colors */
+  --color-map-unexplored: #222222;
+  --color-map-visited: #3a506b;
+  --color-map-current: #fca311;
+  --color-map-boss: #e71d36;
+  --color-map-border-unexplored: #444444;
+  --color-map-border-visited: #5bc0be;
+  --color-map-border-current: #ffffff;
+  
+  /* ==================== SPACING ==================== */
+  
+  /* Base Spacing Units */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
+  --space-4xl: 40px;
+  --space-5xl: 48px;
+  
+  /* Component Specific Spacing */
+  --space-container-padding: var(--space-4xl);
+  --space-modal-padding: var(--space-4xl);
+  --space-button-padding: var(--space-lg) var(--space-4xl);
+  --space-input-padding: var(--space-sm) var(--space-md);
+  --space-ui-margin: var(--space-xl);
+  
+  /* ==================== TYPOGRAPHY ==================== */
+  
+  /* Font Families */
+  --font-family-primary: 'Courier New', monospace;
+  --font-family-ui: 'Courier New', monospace;
+  
+  /* Font Sizes */
+  --font-size-xs: 9px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 32px;
+  --font-size-4xl: 48px;
+  --font-size-5xl: 64px;
+  
+  /* Component Font Sizes */
+  --font-size-button: 1.5rem;
+  --font-size-modal-title: 2rem;
+  --font-size-game-title: 5rem;
+  --font-size-controls: var(--font-size-base);
+  --font-size-fps: var(--font-size-xs);
+  --font-size-health-text: var(--font-size-base);
+  
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+  
+  /* Line Heights */
+  --line-height-tight: 1.1;
+  --line-height-normal: 1.4;
+  --line-height-relaxed: 1.6;
+  
+  /* ==================== BORDERS & RADIUS ==================== */
+  
+  /* Border Widths */
+  --border-width-thin: 1px;
+  --border-width-normal: 2px;
+  --border-width-thick: 3px;
+  
+  /* Border Radius */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 10px;
+  --border-radius-xl: 15px;
+  
+  /* ==================== SHADOWS & EFFECTS ==================== */
+  
+  /* Box Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-game-canvas: 0 0 20px rgba(0, 0, 0, 0.8);
+  --shadow-glow-red: 0 0 15px var(--color-primary-red);
+  --shadow-glow-white: 0 0 5px white;
+  --shadow-glow-map: 0 0 15px var(--color-map-current);
+  
+  /* Text Shadows */
+  --text-shadow-sm: 1px 1px 2px #000;
+  --text-shadow-md: 2px 2px 4px #000;
+  --text-shadow-glow: 0 0 15px var(--color-primary-red), 0 0 5px white;
+  
+  /* ==================== OPACITY & TRANSPARENCY ==================== */
+  
+  /* Standard Opacity Levels */
+  --opacity-disabled: 0.5;
+  --opacity-muted: 0.7;
+  --opacity-semi: 0.8;
+  --opacity-overlay: 0.85;
+  --opacity-modal: 0.95;
+  
+  /* Background Alphas */
+  --bg-alpha-overlay: rgba(0, 0, 0, 0.7);
+  --bg-alpha-modal: rgba(10, 10, 20, 0.95);
+  --bg-alpha-ui: rgba(0, 0, 0, 0.8);
+  --bg-alpha-controls: rgba(0, 0, 0, 0.8);
+  
+  /* ==================== TRANSITIONS ==================== */
+  
+  /* Transition Durations */
+  --transition-fast: 0.1s;
+  --transition-normal: 0.2s;
+  --transition-slow: 0.3s;
+  --transition-fade: 0.8s;
+  --transition-game-start: 1.5s;
+  
+  /* Transition Easings */
+  --ease-in-out: ease-in-out;
+  --ease-out: ease-out;
+  --ease-in: ease-in;
+  
+  /* Common Transitions */
+  --transition-button: all var(--transition-normal) var(--ease-in-out);
+  --transition-fade: opacity var(--transition-fade) var(--ease-in-out);
+  --transition-scale: transform var(--transition-normal) var(--ease-in-out);
+  
+  /* ==================== Z-INDEX LAYERS ==================== */
+  
+  /* Z-Index System for proper layering */
+  --z-index-canvas: 100;
+  --z-index-ui-overlay: 1000;
+  --z-index-controls: 1000;
+  --z-index-fps: 9999;
+  --z-index-modal: 10000;
+  --z-index-modal-content: 10001;
+  --z-index-tooltip: 99999;
+  
+  /* ==================== GAME DIMENSIONS ==================== */
+  
+  /* Core Game Dimensions */
+  --game-width: 1280px;
+  --game-height: 720px;
+  --game-aspect-ratio: calc(16 / 9);
+  
+  /* UI Component Dimensions */
+  --health-bar-width: 300px;
+  --health-bar-height: 25px;
+  --stamina-bar-width: 250px;
+  --stamina-bar-height: 15px;
+  --fps-display-width: 260px;
+  --fps-display-max-height: 180px;
+  
+  /* Modal Dimensions */
+  --modal-min-width: 400px;
+  --modal-content-max-width: 600px;
+  
+  /* Map Dimensions */
+  --map-room-width: 80px;
+  --map-room-height: 60px;
+  --map-grid-columns: 5;
+  --map-grid-rows: 5;
+  --map-grid-gap: 10px;
+  
+  /* ==================== RESPONSIVE BREAKPOINTS ==================== */
+  
+  /* Screen Size Breakpoints */
+  --screen-sm: 640px;
+  --screen-md: 768px;
+  --screen-lg: 1024px;
+  --screen-xl: 1280px;
+  --screen-2xl: 1536px;
+  
+  /* ==================== RESOLUTION SCALE FACTORS ==================== */
+  
+  /* Scale factors for different resolutions */
+  --scale-hd: 0.65;        /* 1280x720 */
+  --scale-hd-plus: 0.75;   /* 1600x900 */
+  --scale-fhd: 0.85;       /* 1920x1080 */
+  --scale-2k: 0.95;        /* 2560x1440 */
+  --scale-4k: 1.0;         /* 3840x2160 */
+  
+  /* Margin factors for UI spacing */
+  --margin-horizontal: 0.95; /* 5% horizontal margin */
+  --margin-vertical: 0.80;   /* 20% vertical margin */
+}
+
+/* ==================== DARK MODE OVERRIDES ==================== */
+/* Future-proofing for potential dark/light theme switching */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark mode is default, but keeping this for consistency */
+  }
+}
+
+/* ==================== HIGH CONTRAST MODE ==================== */
+/* Accessibility support for high contrast preferences */
+
+@media (prefers-contrast: high) {
+  :root {
+    --color-border-primary: #ffffff;
+    --color-border-secondary: #dddddd;
+    --color-text-muted: #ffffff;
+    --bg-alpha-overlay: rgba(0, 0, 0, 0.9);
+  }
+}
+
+/* ==================== REDUCED MOTION ==================== */
+/* Accessibility support for users who prefer reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-normal: 0ms;
+    --transition-slow: 0ms;
+    --transition-fade: 0ms;
+    --transition-game-start: 0ms;
+  }
+}

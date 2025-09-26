@@ -21,6 +21,9 @@ export class RenderSystem {
             this.game.worldBounds.height - 620
         );
 
+        // --- Draw Room Doors ---
+        this.drawRoomDoors(ctx);
+
         // --- Render Entities ---
         for (const entity of this.game.entities.values()) {
             const sprite = entity.getComponent('Sprite');
@@ -201,14 +204,35 @@ export class RenderSystem {
                     y + 15
                 );
             ctx.fillText(
-                `HP: ${player.health.toFixed(0)}/${player.maxHealth}`,
+                `World Pos: (${Math.round(position.x)}, ${Math.round(position.y)})`,
                 x,
                 y + 30
+            );
+            
+            // Room-relative position info
+            const roomTransitionSystem = this.game.getSystem('RoomTransitionSystem');
+            if (roomTransitionSystem) {
+                const currentRoom = roomTransitionSystem.getCurrentRoomData();
+                ctx.fillText(
+                    `Room: ${currentRoom.id} (${currentRoom.name})`,
+                    x,
+                    y + 45
+                );
+                ctx.fillText(
+                    `Room Pixel: (${Math.round(position.x)}, ${Math.round(position.y)})`,
+                    x,
+                    y + 60
+                );
+            }
+            ctx.fillText(
+                `HP: ${player.health.toFixed(0)}/${player.maxHealth}`,
+                x,
+                y + 75
             );
             ctx.fillText(
                 `Stamina: ${player.stamina.toFixed(0)}/${player.maxStamina}`,
                 x,
-                y + 45
+                y + 90
             );
         } else if (boss) {
             // --- BOSS DEBUG INFO ---
@@ -255,5 +279,47 @@ export class RenderSystem {
                 y + 15
             );
         }
+    }
+
+    drawRoomDoors(ctx) {
+        const roomTransitionSystem = this.game.getSystem('RoomTransitionSystem');
+        if (!roomTransitionSystem || !roomTransitionSystem.getCurrentRoomDoors) return;
+
+        const doors = roomTransitionSystem.getCurrentRoomDoors();
+        if (!doors.length) return;
+
+        doors.forEach(door => {
+            // Draw door frame (brown)
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(door.x, door.y, door.width, door.height);
+
+            // Draw door interior (dark)
+            ctx.fillStyle = '#2F1B14';
+            ctx.fillRect(door.x + 5, door.y + 5, door.width - 10, door.height - 10);
+
+            // Debug: Draw collision box in debug mode
+            if (this.game.debugMode) {
+                ctx.strokeStyle = '#FF0000'; // Red for door collision
+                ctx.lineWidth = 2;
+                ctx.strokeRect(door.x, door.y, door.width, door.height);
+                
+                // Label the door
+                ctx.fillStyle = 'white';
+                ctx.font = '12px monospace';
+                ctx.fillText(`Door to Room ${door.toRoom}`, door.x, door.y - 10);
+                
+                // Show room info
+                const currentRoomId = roomTransitionSystem.currentRoom;
+                const currentRoom = roomTransitionSystem.rooms[currentRoomId];
+                ctx.fillText(`Current: Room ${currentRoomId} (${currentRoom.startX}-${currentRoom.endX})`, door.x, door.y - 25);
+                
+                // Show player position for debugging
+                const player = this.game.getEntitiesWithComponent('Player')[0];
+                if (player) {
+                    const playerPos = player.getComponent('Position');
+                    ctx.fillText(`Player: (${Math.round(playerPos.x)}, ${Math.round(playerPos.y)})`, door.x, door.y - 40);
+                }
+            }
+        });
     }
 }
