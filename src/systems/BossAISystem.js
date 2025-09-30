@@ -1,10 +1,21 @@
-// --- COMPLETE AND UNABRIDGED FILE ---
+/* ===================================
+   BOSS AI SYSTEM - SHADOW KNIGHT
+   ===================================
+   Boss AI system using centralized GameConfig for boss behavior and attack patterns.
+   All boss mechanics and values reference configuration.
+*/
 
 import { CombatSystem } from "./CombatSystem.js";
+import { GameConfig } from '../config/GameConfig.js';
 
 export class BossAISystem {
   constructor() {
     this.game = null;
+    
+    // Cache boss configuration for performance
+    this.bossConfig = GameConfig.BOSS;
+    this.attackPatterns = this.bossConfig.ATTACK_PATTERNS;
+    this.flashEffects = this.bossConfig.FLASH_EFFECTS;
   }
 
   update(deltaTime) {
@@ -40,7 +51,10 @@ export class BossAISystem {
         const playerPos = player.getComponent('Position');
         if (this.calculateDistance(position, playerPos) <= boss.detectionRange) {
           boss.state = 'active';
-          if (sprite) sprite.flash('#ff0000', 500);
+          if (sprite) {
+            const activationFlash = this.flashEffects.ACTIVATION;
+            sprite.flash(activationFlash.COLOR, activationFlash.DURATION);
+          }
         }
         return;
       }
@@ -62,7 +76,7 @@ export class BossAISystem {
         this.handleAttackingState(boss, bossEntity, deltaTime);
         break;
       case 'recovery':
-        velocity.x *= 0.95;
+        velocity.x *= this.bossConfig.RECOVERY_FRICTION;
         if (boss.stateTimer <= 0) {
           boss.state = 'active';
         }
@@ -74,13 +88,14 @@ export class BossAISystem {
     const playerPos = player.getComponent('Position');
     const distance = this.calculateDistance(position, playerPos);
 
-    if (distance > boss.attackRange * 1.2) {
+    const rangeMultiplier = this.bossConfig.ATTACK_RANGE_MULTIPLIER;
+    if (distance > boss.attackRange * rangeMultiplier) {
       const direction = playerPos.x > position.x ? 1 : -1;
       velocity.x = direction * boss.speed;
       boss.facingDirection = direction;
       if (sprite) sprite.flipX = direction < 0;
     } else {
-      velocity.x *= 0.7;
+      velocity.x *= this.bossConfig.APPROACH_FRICTION;
       if (boss.canAttack()) {
         const pattern = boss.selectRandomAttackPattern();
         boss.startAttackPattern(pattern);
@@ -93,7 +108,7 @@ export class BossAISystem {
 
     if (boss.stateTimer <= 0) {
       boss.state = 'recovery';
-      boss.stateTimer = 500; // Fixed, shorter recovery duration
+      boss.stateTimer = this.bossConfig.RECOVERY_DURATION;
     }
   }
 
@@ -109,51 +124,84 @@ export class BossAISystem {
 
     switch (boss.currentAttackPattern) {
       case 'triple_slash':
-        if (attackProgress >= 0.25 && boss.attackPatternStep === 0) {
-          combatSystem.createHitbox(bossEntity, { width: 120, height: 80, damage: boss.damage, x: position.x + (boss.facingDirection > 0 ? 0 : -120), y: position.y - 40, attackId: `${boss.lastAttackTime}-1` });
+        const tripleSlash = this.attackPatterns.TRIPLE_SLASH;
+        if (attackProgress >= tripleSlash.TIMING.FIRST && boss.attackPatternStep === 0) {
+          const slash1 = tripleSlash.SLASH_1;
+          combatSystem.createHitbox(bossEntity, { 
+            width: slash1.WIDTH, height: slash1.HEIGHT, damage: boss.damage * slash1.DAMAGE_MULTIPLIER, 
+            x: position.x + (boss.facingDirection > 0 ? slash1.OFFSET_X_RIGHT : slash1.OFFSET_X_LEFT), 
+            y: position.y + slash1.OFFSET_Y, 
+            attackId: `${boss.lastAttackTime}-1` 
+          });
           boss.attackPatternStep = 1;
-        } else if (attackProgress >= 0.5 && boss.attackPatternStep === 1) {
-          combatSystem.createHitbox(bossEntity, { width: 120, height: 80, damage: boss.damage, x: position.x + (boss.facingDirection > 0 ? 10 : -130), y: position.y - 40, attackId: `${boss.lastAttackTime}-2` });
+        } else if (attackProgress >= tripleSlash.TIMING.SECOND && boss.attackPatternStep === 1) {
+          const slash2 = tripleSlash.SLASH_2;
+          combatSystem.createHitbox(bossEntity, { 
+            width: slash2.WIDTH, height: slash2.HEIGHT, damage: boss.damage * slash2.DAMAGE_MULTIPLIER, 
+            x: position.x + (boss.facingDirection > 0 ? slash2.OFFSET_X_RIGHT : slash2.OFFSET_X_LEFT), 
+            y: position.y + slash2.OFFSET_Y, 
+            attackId: `${boss.lastAttackTime}-2` 
+          });
           boss.attackPatternStep = 2;
-        } else if (attackProgress >= 0.75 && boss.attackPatternStep === 2) {
-          combatSystem.createHitbox(bossEntity, { width: 130, height: 90, damage: boss.damage * 1.2, x: position.x + (boss.facingDirection > 0 ? 0 : -130), y: position.y - 45, attackId: `${boss.lastAttackTime}-3` });
+        } else if (attackProgress >= tripleSlash.TIMING.THIRD && boss.attackPatternStep === 2) {
+          const slash3 = tripleSlash.SLASH_3;
+          combatSystem.createHitbox(bossEntity, { 
+            width: slash3.WIDTH, height: slash3.HEIGHT, damage: boss.damage * slash3.DAMAGE_MULTIPLIER, 
+            x: position.x + (boss.facingDirection > 0 ? slash3.OFFSET_X_RIGHT : slash3.OFFSET_X_LEFT), 
+            y: position.y + slash3.OFFSET_Y, 
+            attackId: `${boss.lastAttackTime}-3` 
+          });
           boss.attackPatternStep = 3;
         }
         break;
 
       case 'shadow_dash':
-        if (attackProgress > 0.3 && boss.attackPatternStep === 0) {
-          velocity.x = boss.facingDirection * boss.speed * 3;
+        const shadowDash = this.attackPatterns.SHADOW_DASH;
+        if (attackProgress > shadowDash.TIMING.TRIGGER && boss.attackPatternStep === 0) {
+          velocity.x = boss.facingDirection * boss.speed * shadowDash.SPEED_MULTIPLIER;
+          const collision = bossEntity.getComponent('Collision');
           combatSystem.createHitbox(bossEntity, {
-            width: bossEntity.getComponent('Collision').width, height: bossEntity.getComponent('Collision').height,
-            damage: boss.damage * 1.2,
-            x: position.x + bossEntity.getComponent('Collision').offsetX,
-            y: position.y + bossEntity.getComponent('Collision').offsetY,
-            duration: 400, attackId: boss.lastAttackTime
+            width: collision.width, height: collision.height,
+            damage: boss.damage * shadowDash.DAMAGE_MULTIPLIER,
+            x: position.x + collision.offsetX,
+            y: position.y + collision.offsetY,
+            duration: shadowDash.DURATION, attackId: boss.lastAttackTime
           });
           boss.attackPatternStep = 1;
         }
         break;
 
       case 'ground_slam':
-        if (attackProgress >= 0.7 && boss.attackPatternStep === 0) {
-          combatSystem.createHitbox(bossEntity, { width: 200, height: 40, damage: boss.damage * 0.8, x: position.x - 100, y: position.y, attackId: boss.lastAttackTime });
+        const groundSlam = this.attackPatterns.GROUND_SLAM;
+        if (attackProgress >= groundSlam.TIMING.TRIGGER && boss.attackPatternStep === 0) {
+          combatSystem.createHitbox(bossEntity, { 
+            width: groundSlam.WIDTH, 
+            height: groundSlam.HEIGHT, 
+            damage: boss.damage * groundSlam.DAMAGE_MULTIPLIER, 
+            x: position.x + groundSlam.OFFSET_X, 
+            y: position.y + groundSlam.OFFSET_Y, 
+            attackId: boss.lastAttackTime 
+          });
           boss.attackPatternStep = 1;
         }
         break;
 
       case 'teleport_strike':
+        const teleportStrike = this.attackPatterns.TELEPORT_STRIKE;
         const playerPos = boss.target.getComponent('Position');
-        if (attackProgress >= 0.3 && boss.attackPatternStep === 0) {
-          position.x = playerPos.x - (boss.facingDirection * 100);
+        if (attackProgress >= teleportStrike.TIMING.TELEPORT && boss.attackPatternStep === 0) {
+          position.x = playerPos.x - (boss.facingDirection * teleportStrike.TELEPORT_DISTANCE);
           position.y = playerPos.y;
-          bossEntity.getComponent('Sprite')?.flash('#9c88ff', 150);
+          const teleportFlash = this.flashEffects.TELEPORT;
+          bossEntity.getComponent('Sprite')?.flash(teleportFlash.COLOR, teleportFlash.DURATION);
           boss.attackPatternStep = 1;
-        } else if (attackProgress >= 0.6 && boss.attackPatternStep === 1) {
+        } else if (attackProgress >= teleportStrike.TIMING.STRIKE && boss.attackPatternStep === 1) {
           combatSystem.createHitbox(bossEntity, {
-            width: 90, height: 60, damage: boss.damage * 1.5,
-            x: position.x + (boss.facingDirection > 0 ? 0 : -90),
-            y: position.y - 30,
+            width: teleportStrike.WIDTH, 
+            height: teleportStrike.HEIGHT, 
+            damage: boss.damage * teleportStrike.DAMAGE_MULTIPLIER,
+            x: position.x + (boss.facingDirection > 0 ? teleportStrike.OFFSET_X_RIGHT : teleportStrike.OFFSET_X_LEFT),
+            y: position.y + teleportStrike.OFFSET_Y,
             attackId: boss.lastAttackTime
           });
           boss.attackPatternStep = 2;
@@ -161,15 +209,19 @@ export class BossAISystem {
         break;
 
       case 'projectile_barrage':
-        const fireTimes = [0.2, 0.4, 0.6, 0.8];
+        const projectileBarrage = this.attackPatterns.PROJECTILE_BARRAGE;
+        const fireTimes = projectileBarrage.TIMING;
         fireTimes.forEach((time, index) => {
           if (attackProgress >= time && boss.attackPatternStep === index) {
             const direction = boss.target.getComponent('Position').x > position.x ? 1 : -1;
             combatSystem.createHitbox(bossEntity, {
-              width: 30, height: 10, damage: boss.damage * 0.5,
-              x: position.x + (direction * 30), y: position.y - 15,
+              width: projectileBarrage.WIDTH, 
+              height: projectileBarrage.HEIGHT, 
+              damage: boss.damage * projectileBarrage.DAMAGE_MULTIPLIER,
+              x: position.x + (direction * projectileBarrage.SPAWN_OFFSET_X), 
+              y: position.y + projectileBarrage.SPAWN_OFFSET_Y,
               attackId: `${boss.lastAttackTime}-${index}`,
-              velocity: { x: 800 * direction, y: 0 }
+              velocity: { x: projectileBarrage.VELOCITY * direction, y: 0 }
             });
             boss.attackPatternStep = index + 1;
           }
@@ -177,51 +229,70 @@ export class BossAISystem {
         break;
 
       case 'air_slam':
-        if (attackProgress >= 0.2 && boss.attackPatternStep === 0) {
-          velocity.y = -600; // Jump up
+        const airSlam = this.attackPatterns.AIR_SLAM;
+        if (attackProgress >= airSlam.TIMING.JUMP && boss.attackPatternStep === 0) {
+          velocity.y = airSlam.JUMP_VELOCITY;
           boss.attackPatternStep = 1;
-        } else if (attackProgress >= 0.6 && boss.attackPatternStep === 1 && physics.onGround) {
-          // Slam down and create shockwave
-          combatSystem.createHitbox(bossEntity, { width: 300, height: 50, damage: boss.damage * 1.5, x: position.x - 150, y: position.y + 30, attackId: boss.lastAttackTime });
-          bossEntity.getComponent('Sprite')?.flash('#ff0000', 200);
+        } else if (attackProgress >= airSlam.TIMING.SLAM && boss.attackPatternStep === 1 && physics.onGround) {
+          combatSystem.createHitbox(bossEntity, { 
+            width: airSlam.SHOCKWAVE.WIDTH, 
+            height: airSlam.SHOCKWAVE.HEIGHT, 
+            damage: boss.damage * airSlam.DAMAGE_MULTIPLIER, 
+            x: position.x + airSlam.SHOCKWAVE.OFFSET_X, 
+            y: position.y + airSlam.SHOCKWAVE.OFFSET_Y, 
+            attackId: boss.lastAttackTime 
+          });
+          const slamFlash = this.flashEffects.SLAM;
+          bossEntity.getComponent('Sprite')?.flash(slamFlash.COLOR, slamFlash.DURATION);
           boss.attackPatternStep = 2;
         }
         break;
 
       case 'multi_projectile':
-        const projectileFireTimes = [0.2, 0.4, 0.6];
+        const multiProjectile = this.attackPatterns.MULTI_PROJECTILE;
+        const projectileFireTimes = multiProjectile.TIMING;
         projectileFireTimes.forEach((time, index) => {
           if (attackProgress >= time && boss.attackPatternStep === index) {
             const direction = boss.target.getComponent('Position').x > position.x ? 1 : -1;
             combatSystem.createHitbox(bossEntity, {
-              width: 20, height: 20, damage: boss.damage * 0.7,
-              x: position.x + (direction * 50), y: position.y - 20 + (index * 10),
+              width: multiProjectile.WIDTH, 
+              height: multiProjectile.HEIGHT, 
+              damage: boss.damage * multiProjectile.DAMAGE_MULTIPLIER,
+              x: position.x + (direction * multiProjectile.SPAWN_OFFSET_X), 
+              y: position.y + multiProjectile.BASE_OFFSET_Y + (index * multiProjectile.SPREAD_Y),
               attackId: `${boss.lastAttackTime}-${index}`,
-              velocity: { x: 600 * direction, y: (index - 1) * 100 } // Spread projectiles
+              velocity: { 
+                x: multiProjectile.VELOCITY * direction, 
+                y: (index - 1) * multiProjectile.SPREAD_VELOCITY 
+              }
             });
             boss.attackPatternStep = index + 1;
           }
         });
-        if (boss.attackPatternStep === projectileFireTimes.length) boss.attackPatternStep = 0; // Reset for next attack
+        if (boss.attackPatternStep === projectileFireTimes.length) boss.attackPatternStep = 0;
         break;
 
       case 'teleport_dash':
+        const teleportDash = this.attackPatterns.TELEPORT_DASH;
         const playerTargetPos = boss.target.getComponent('Position');
-        if (attackProgress >= 0.3 && boss.attackPatternStep === 0) {
-          // Teleport near player
-          position.x = playerTargetPos.x + (Math.random() > 0.5 ? 200 : -200);
-          position.y = playerTargetPos.y; // Keep on ground level
-          bossEntity.getComponent('Sprite')?.flash('#00ffff', 100);
+        if (attackProgress >= teleportDash.TIMING.TELEPORT && boss.attackPatternStep === 0) {
+          const teleportDistance = Math.random() > 0.5 ? teleportDash.TELEPORT_DISTANCE : -teleportDash.TELEPORT_DISTANCE;
+          position.x = playerTargetPos.x + teleportDistance;
+          position.y = playerTargetPos.y;
+          const dashTeleportFlash = this.flashEffects.DASH_TELEPORT;
+          bossEntity.getComponent('Sprite')?.flash(dashTeleportFlash.COLOR, dashTeleportFlash.DURATION);
           boss.attackPatternStep = 1;
-        } else if (attackProgress >= 0.5 && boss.attackPatternStep === 1) {
-          // Short dash after teleport
-          velocity.x = boss.facingDirection * boss.speed * 4;
+        } else if (attackProgress >= teleportDash.TIMING.DASH && boss.attackPatternStep === 1) {
+          velocity.x = boss.facingDirection * boss.speed * teleportDash.SPEED_MULTIPLIER;
+          const collision = bossEntity.getComponent('Collision');
           combatSystem.createHitbox(bossEntity, {
-            width: bossEntity.getComponent('Collision').width * 1.5, height: bossEntity.getComponent('Collision').height,
-            damage: boss.damage * 1.8,
-            x: position.x + bossEntity.getComponent('Collision').offsetX,
-            y: position.y + bossEntity.getComponent('Collision').offsetY,
-            duration: 200, attackId: boss.lastAttackTime
+            width: collision.width * teleportDash.HITBOX_WIDTH_MULTIPLIER, 
+            height: collision.height,
+            damage: boss.damage * teleportDash.DAMAGE_MULTIPLIER,
+            x: position.x + collision.offsetX,
+            y: position.y + collision.offsetY,
+            duration: teleportDash.DURATION, 
+            attackId: boss.lastAttackTime
           });
           boss.attackPatternStep = 2;
         }

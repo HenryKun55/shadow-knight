@@ -1,3 +1,10 @@
+/* ===================================
+   MAIN ENTRY POINT - SHADOW KNIGHT
+   ===================================
+   Main application entry point using centralized configurations.
+   Initializes the game with all systems and components.
+*/
+
 import { Game } from './core/Game.js';
 import { Entity } from './core/Entity.js';
 import { MapSystem } from './systems/MapSystem.js';
@@ -19,7 +26,14 @@ import { RenderSystem } from './systems/RenderSystem.js';
 import { UISystem } from './systems/UISystem.js';
 import { RoomTransitionSystem } from './systems/RoomTransitionSystem.js';
 import { bossDefinitions } from './entities/bossDefinitions.js';
-import { cheats } from './core/cheat.js'; // Assumindo que você tem este arquivo para cheats
+import { cheats } from './core/cheat.js';
+
+// Import centralized configurations
+import { GameConfig, validateConfig } from './config/GameConfig.js';
+import { UIConstants } from './config/UIConstants.js';
+import { AudioConfig } from './config/AudioConfig.js';
+import { SaveSystem } from './systems/SaveSystem.js';
+import { PauseSystem } from './systems/PauseSystem.js';
 
 class ShadowKnight {
   constructor() {
@@ -28,16 +42,21 @@ class ShadowKnight {
 
   async init() {
     try {
-      this.game = new Game(document.getElementById('game-canvas'));
+      // Validate configuration before initializing
+      if (!validateConfig()) {
+        throw new Error('Configuration validation failed');
+      }
 
+      // Get canvas using UIConstants
+      const canvas = UIConstants.UTILS.safeQuerySelector(UIConstants.SELECTORS.GAME_CANVAS);
+      if (!canvas) {
+        throw new Error('Game canvas not found');
+      }
+
+      this.game = new Game(canvas);
       this.setupUIEventListeners();
 
-      const soundsToLoad = {
-        jump: 'assets/sounds/jump.wav', dash: 'assets/sounds/dash.wav', attack: 'assets/sounds/attack.wav',
-        parry: 'assets/sounds/parry.wav', enemyHit: 'assets/sounds/enemy_hit.wav', enemyDeath: 'assets/sounds/enemy_death.wav',
-        playerHit: 'assets/sounds/player_hit.wav', bgm: 'assets/sounds/background_music.mp3',
-      };
-      await this.game.soundManager.loadSounds(soundsToLoad);
+      // Note: Audio loading moved to startGame() to comply with browser audio policy
 
       const mapSystem = new MapSystem();
       mapSystem.init();
@@ -55,6 +74,19 @@ class ShadowKnight {
       this.game.addSystem(new UISystem());
       this.game.addSystem(mapSystem);
       this.game.addSystem(roomTransitionSystem);
+      
+      // Add new systems
+      const saveSystem = new SaveSystem();
+      saveSystem.game = this.game;
+      this.game.addSystem(saveSystem);
+      
+      const pauseSystem = new PauseSystem();
+      pauseSystem.setGame(this.game);
+      pauseSystem.setSaveSystem(saveSystem);
+      this.game.addSystem(pauseSystem);
+      
+      // Start auto-save
+      saveSystem.startAutoSave();
 
       this.createPlayer();
       
@@ -92,6 +124,21 @@ class ShadowKnight {
     const settingsButton = document.getElementById('settings-button');
     const closeSettingsButton = document.getElementById('close-settings-button');
     const uiOverlay = document.getElementById('ui-overlay');
+    
+    // Debug: verificar se elementos existem
+    console.log('UI Elements found:', {
+      mainMenu: !!mainMenu,
+      settingsModal: !!settingsModal,
+      startButton: !!startButton,
+      settingsButton: !!settingsButton,
+      closeSettingsButton: !!closeSettingsButton,
+      uiOverlay: !!uiOverlay
+    });
+
+    if (!startButton || !settingsButton || !closeSettingsButton || !settingsModal) {
+      console.error('Required UI elements not found');
+      return;
+    }
 
     startButton.addEventListener('click', async () => {
       // Criar fade overlay para inicialização
@@ -117,6 +164,14 @@ class ShadowKnight {
       // Esconde menu e mostra jogo
       mainMenu.classList.add('hidden');
       uiOverlay.classList.remove('hidden');
+      
+      // Inicializar audio context e carregar sons
+      await this.game.soundManager.initAudioContext();
+      
+      // Load sounds using centralized audio configuration
+      const soundsToLoad = GameConfig.AUDIO.SOUND_PATHS;
+      await this.game.soundManager.loadSounds(soundsToLoad);
+      
       this.game.start();
       this.game.soundManager.playBGM('bgm');
       
@@ -153,29 +208,37 @@ class ShadowKnight {
 
   createPlayer() {
     this.player = new Entity('player');
-    this.player.addComponent('Position', new Position(100, 550)); // Start in room 0 at entrance
+    
+    // Use spawn settings from configuration
+    const spawnPos = GameConfig.PLAYER.SPAWN;
+    this.player.addComponent('Position', new Position(spawnPos.DEFAULT_X, spawnPos.DEFAULT_Y));
     this.player.addComponent('Velocity', new Velocity(0, 0));
     this.player.addComponent('Physics', new Physics());
+    
+    // Create sprite with configured placeholder
     const sprite = new Sprite({
       imageSrc: 'https://placehold.co/256x64/4ecdc4/000000?text=Player',
-      width: 32, height: 58, frameWidth: 64, frameHeight: 58,
+      width: 32, 
+      height: 58, 
+      frameWidth: 64, 
+      frameHeight: 58,
       offsetX: -16,
       offsetY: -29,
     });
+    
     this.player.addComponent('Sprite', sprite);
     this.player.addComponent('Player', new Player());
     this.player.addComponent('MapState', new MapState());
     this.player.addComponent('Collision', new Collision(32, 58, -16, -29));
+    
     this.game.addEntity(this.player);
     this.game.setCameraTarget(this.player);
   }
 
   getEnemyStats(type) {
-    switch (type) {
-      case 'goblin': return EnemyTypes.GOBLIN;
-      case 'orc': return EnemyTypes.ORC;
-      default: return EnemyTypes.GOBLIN;
-    }
+    // Use centralized enemy configuration
+    const enemyType = type.toUpperCase();
+    return GameConfig.ENEMIES.TYPES[enemyType] || GameConfig.ENEMIES.TYPES.GOBLIN;
   }
 
   createEnemies() {
@@ -186,25 +249,43 @@ class ShadowKnight {
     const enemy = new Entity(`enemy_${type}_${Date.now()}`);
     enemy.addComponent('Position', new Position(x, y));
     enemy.addComponent('Velocity', new Velocity(0, 0));
-    enemy.addComponent('Physics', new Physics({ gravity: 980, friction: 0.8, airResistance: 0.95 }));
-    let color = '#ff6b6b';
-    switch (type) {
-      case 'goblin': color = '#2ed573'; break;
-      case 'orc': color = '#ff4757'; break;
-      case 'shadow_assassin': color = '#5f27cd'; break;
-      case 'armored_knight': color = '#747d8c'; break;
-    }
-    const sprite = new Sprite({ width: 28, height: 40, color: color, offsetX: -14, offsetY: -20 });
-    sprite.addAnimation('idle', [0], 300, true);
-    sprite.addAnimation('walk', [0, 1], 200, true);
-    sprite.addAnimation('run', [0, 1, 2], 150, true);
-    sprite.addAnimation('attack', [3], 100, false);
+    
+    // Use physics configuration for enemies
+    enemy.addComponent('Physics', new Physics({ 
+      gravity: GameConfig.PHYSICS.GRAVITY, 
+      friction: GameConfig.PHYSICS.FRICTION.GROUND, 
+      airResistance: GameConfig.PHYSICS.FRICTION.AIR 
+    }));
+    
+    // Get enemy color from configuration
+    const enemyType = type.toUpperCase();
+    const enemyConfig = GameConfig.ENEMIES.TYPES[enemyType];
+    const color = enemyConfig ? enemyConfig.color : GameConfig.ENEMIES.TYPES.GOBLIN.color;
+    
+    // Create sprite with enemy animations from configuration
+    const sprite = new Sprite({ 
+      width: 28, 
+      height: 40, 
+      color: color, 
+      offsetX: -14, 
+      offsetY: -20 
+    });
+    
+    // Add animations using configuration
+    const animations = GameConfig.ANIMATION.ENEMY;
+    sprite.addAnimation('idle', animations.IDLE.frames, animations.IDLE.frameTime, animations.IDLE.loop);
+    sprite.addAnimation('walk', animations.WALK.frames, animations.WALK.frameTime, animations.WALK.loop);
+    sprite.addAnimation('run', animations.RUN.frames, animations.RUN.frameTime, animations.RUN.loop);
+    sprite.addAnimation('attack', animations.ATTACK.frames, animations.ATTACK.frameTime, animations.ATTACK.loop);
     sprite.playAnimation('idle');
+    
     enemy.addComponent('Sprite', sprite);
+    
     const enemyComponent = new Enemy(type, stats);
     enemyComponent.setPatrolCenter(x, y);
     enemy.addComponent('Enemy', enemyComponent);
     enemy.addComponent('Collision', new Collision(28, 40, -14, -20));
+    
     this.game.addEntity(enemy);
     return enemy;
   }
@@ -233,9 +314,30 @@ class ShadowKnight {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const shadowKnight = new ShadowKnight();
-  shadowKnight.init();
-  window.gameInstance = shadowKnight.game;
+  try {
+    console.log('DOM loaded, initializing Shadow Knight...');
+    const shadowKnight = new ShadowKnight();
+    shadowKnight.init();
+    window.gameInstance = shadowKnight.game;
+  } catch (error) {
+    console.error('Failed to initialize game on DOM load:', error);
+    
+    // Show error to user
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: red;
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 10000;
+    `;
+    errorDiv.textContent = `Game failed to initialize: ${error.message}`;
+    document.body.appendChild(errorDiv);
+  }
 });
 
 document.addEventListener('keydown', (e) => {

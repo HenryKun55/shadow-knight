@@ -1,8 +1,22 @@
+/* ===================================
+   MAP SYSTEM - SHADOW KNIGHT
+   ===================================
+   Map system using centralized GameConfig for UI styling and map configuration.
+   All map colors, dimensions, and behavior reference configuration.
+*/
+
+import { GameConfig } from '../config/GameConfig.js';
+import { UIConstants } from '../config/UIConstants.js';
+
 export class MapSystem {
   constructor() {
     this.mapOverlay = null;
     this.mapCanvas = null;
     this.isOpen = false;
+    
+    // Cache map configuration for performance
+    this.mapConfig = GameConfig.MAP;
+    this.inputKeys = GameConfig.INPUT.KEYS.MAP;
   }
 
   init() {
@@ -16,55 +30,58 @@ export class MapSystem {
       existing.remove();
     }
 
-    // Create background shadow overlay
+    // Create background shadow overlay using configuration
     this.backgroundShadow = document.createElement('div');
-    this.backgroundShadow.id = 'map-background-shadow';
+    this.backgroundShadow.id = UIConstants.IDS.MAP_BACKGROUND_SHADOW;
+    const shadowStyles = this.mapConfig.UI.BACKGROUND_SHADOW;
     this.backgroundShadow.style.cssText = `
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 999;
+      background: ${shadowStyles.BACKGROUND};
+      z-index: ${shadowStyles.Z_INDEX};
       opacity: 0;
-      transition: opacity 0.3s ease-in-out;
+      transition: opacity ${shadowStyles.TRANSITION_DURATION}ms ease-in-out;
       pointer-events: none;
       display: none;
     `;
     document.body.appendChild(this.backgroundShadow);
 
-    // Create map overlay com animações
+    // Create map overlay using configuration
     this.mapOverlay = document.createElement('div');
-    this.mapOverlay.id = 'map-overlay';
+    this.mapOverlay.id = UIConstants.SELECTORS.MAP_OVERLAY.replace('#', '');
+    const overlayStyles = this.mapConfig.UI.OVERLAY;
     this.mapOverlay.style.cssText = `
       position: fixed;
       top: 50%;
       left: 50%;
-      transform: translate(-50%, -50%) scale(0.95);
-      width: 400px;
-      height: 240px;
-      background: rgba(0, 0, 30, 0.95);
-      border: 3px solid #666;
-      border-radius: 8px;
-      z-index: 1000;
-      font-family: monospace;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+      transform: translate(-50%, -50%) scale(${overlayStyles.INITIAL_SCALE});
+      width: ${overlayStyles.WIDTH}px;
+      height: ${overlayStyles.HEIGHT}px;
+      background: ${overlayStyles.BACKGROUND};
+      border: ${overlayStyles.BORDER_WIDTH}px solid ${overlayStyles.BORDER_COLOR};
+      border-radius: ${overlayStyles.BORDER_RADIUS}px;
+      z-index: ${overlayStyles.Z_INDEX};
+      font-family: ${overlayStyles.FONT_FAMILY};
+      box-shadow: ${overlayStyles.BOX_SHADOW};
       opacity: 0;
-      transition: all 0.3s ease-in-out;
+      transition: all ${overlayStyles.TRANSITION_DURATION}ms ease-in-out;
       pointer-events: none;
       display: none;
     `;
 
-    // Map canvas
+    // Map canvas using configuration
     this.mapCanvas = document.createElement('canvas');
-    this.mapCanvas.width = 394;
-    this.mapCanvas.height = 230;
+    const canvasConfig = this.mapConfig.UI.CANVAS;
+    this.mapCanvas.width = canvasConfig.WIDTH;
+    this.mapCanvas.height = canvasConfig.HEIGHT;
     this.mapCanvas.style.cssText = `
       position: absolute;
-      top: 3px;
-      left: 3px;
-      image-rendering: pixelated;
+      top: ${canvasConfig.OFFSET_TOP}px;
+      left: ${canvasConfig.OFFSET_LEFT}px;
+      image-rendering: ${canvasConfig.RENDERING};
     `;
 
     this.mapOverlay.appendChild(this.mapCanvas);
@@ -75,7 +92,7 @@ export class MapSystem {
     // Verifica se M está sendo pressionado (hold to view)
     const game = window.gameInstance;
     if (game && game.inputManager) {
-      const isMPressed = game.inputManager.isKeyDown('KeyM');
+      const isMPressed = this.inputKeys.some(key => game.inputManager.isKeyDown(key));
       
       // Verifica se player pode acessar mapa
       const player = game.getEntitiesWithComponent('Player')[0];
@@ -138,11 +155,11 @@ export class MapSystem {
     this.mapOverlay.style.opacity = '0';
     this.mapOverlay.style.transform = 'translate(-50%, -50%) scale(0.95)';
     
-    // Esconde elementos após animação
+    // Hide elements after animation using configured duration
     setTimeout(() => {
       this.backgroundShadow.style.display = 'none';
       this.mapOverlay.style.display = 'none';
-    }, 300);
+    }, this.mapConfig.UI.OVERLAY.TRANSITION_DURATION);
   }
 
   updateMapDisplay() {
@@ -163,20 +180,22 @@ export class MapSystem {
 
     const ctx = this.mapCanvas.getContext('2d');
     
-    // Clear canvas
-    ctx.fillStyle = '#000020';
-    ctx.fillRect(0, 0, 394, 230);
+    // Clear canvas using configuration
+    const canvasConfig = this.mapConfig.UI.CANVAS;
+    ctx.fillStyle = this.mapConfig.COLORS.BACKGROUND;
+    ctx.fillRect(0, 0, canvasConfig.WIDTH, canvasConfig.HEIGHT);
 
     // Draw discovered rooms only (estilo SOTN)
     this.drawDiscoveredRooms(ctx, mapState, roomTransitionSystem, position);
   }
 
   drawDiscoveredRooms(ctx, mapState, roomTransitionSystem, playerPosition) {
-    // MAPA ESTILO HOLLOW KNIGHT: salas pequenas e compactas
-    const roomWidth = 40;    // Largura de cada sala no mapa (muito menor)
-    const roomHeight = 25;   // Altura de cada sala no mapa (muito menor)
-    const startX = 180;      // Centraliza melhor no canvas
-    const startY = 110;
+    // Room layout using configuration
+    const roomLayout = this.mapConfig.ROOM_LAYOUT;
+    const roomWidth = roomLayout.WIDTH;
+    const roomHeight = roomLayout.HEIGHT;
+    const startX = roomLayout.START_X;
+    const startY = roomLayout.START_Y;
 
     mapState.visitedRooms.forEach(roomId => {
       const room = roomTransitionSystem.rooms[roomId];
@@ -186,48 +205,54 @@ export class MapSystem {
       let mapX = startX + (roomId * roomWidth);
       let mapY = startY;
 
-      // Cor da sala descoberta
+      // Room colors using configuration
       const isCurrent = roomId === mapState.currentRoom;
-      const roomColor = room.theme === 'forest' ? '#004400' : '#440000';
-      const borderColor = isCurrent ? '#00ff00' : '#666666';
+      const themeColors = this.mapConfig.COLORS.ROOM_THEMES;
+      const roomColor = themeColors[room.theme?.toUpperCase()] || themeColors.DEFAULT;
+      const borderColor = isCurrent ? this.mapConfig.COLORS.CURRENT_ROOM : this.mapConfig.COLORS.VISITED_ROOM;
 
       // Desenha retângulo da sala
       ctx.fillStyle = roomColor;
       ctx.fillRect(mapX, mapY, roomWidth, roomHeight);
       
-      // Borda
+      // Border using configuration
       ctx.strokeStyle = borderColor;
-      ctx.lineWidth = isCurrent ? 2 : 1;
+      const borderConfig = this.mapConfig.ROOM_LAYOUT.BORDER;
+      ctx.lineWidth = isCurrent ? borderConfig.CURRENT_WIDTH : borderConfig.NORMAL_WIDTH;
       ctx.strokeRect(mapX, mapY, roomWidth, roomHeight);
 
       // Se é a sala atual, desenha player dot
       if (isCurrent) {
-        // Calcula posição do player dentro da sala no mapa
-        const playerMapX = mapX + (playerPosition.x / 1280) * roomWidth;
-        const playerMapY = mapY + (playerPosition.y / 720) * roomHeight;
+        // Calculate player position within room using configuration
+        const worldBounds = GameConfig.WORLD.BOUNDS;
+        const playerMapX = mapX + (playerPosition.x / worldBounds.width) * roomWidth;
+        const playerMapY = mapY + (playerPosition.y / worldBounds.height) * roomHeight;
 
-        // Player dot (menor para salas pequenas)
-        ctx.fillStyle = '#ffff00';
+        // Player dot using configuration
+        const playerDot = this.mapConfig.PLAYER_DOT;
+        ctx.fillStyle = playerDot.COLOR;
         ctx.beginPath();
-        ctx.arc(playerMapX, playerMapY, 1.5, 0, Math.PI * 2);
+        ctx.arc(playerMapX, playerMapY, playerDot.RADIUS, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Nome da sala (fonte menor)
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '8px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(room.name, mapX + roomWidth/2, mapY - 3);
+      // Room name using configuration
+      const textConfig = this.mapConfig.TEXT;
+      ctx.fillStyle = textConfig.ROOM_NAME.COLOR;
+      ctx.font = textConfig.ROOM_NAME.FONT;
+      ctx.textAlign = textConfig.ROOM_NAME.ALIGN;
+      ctx.fillText(room.name, mapX + roomWidth/2, mapY + textConfig.ROOM_NAME.OFFSET_Y);
     });
 
     // Connections entre salas descobertas
     this.drawRoomConnections(ctx, mapState, startX, startY, roomWidth, roomHeight);
 
-    // Info text
-    ctx.fillStyle = '#cccccc';
-    ctx.font = '8px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText('Hold M to view map (ground only)', 20, 210);
+    // Info text using configuration
+    const infoConfig = this.mapConfig.TEXT.INFO;
+    ctx.fillStyle = infoConfig.COLOR;
+    ctx.font = infoConfig.FONT;
+    ctx.textAlign = infoConfig.ALIGN;
+    ctx.fillText(infoConfig.MESSAGE, infoConfig.X, infoConfig.Y);
   }
 
   drawRoomConnections(ctx, mapState, startX, startY, roomWidth, roomHeight) {
@@ -244,9 +269,10 @@ export class MapSystem {
         const x2 = startX + (room2 * roomWidth);
         const y2 = startY + roomHeight / 2;
 
-        // Linha de conexão (mais fina)
-        ctx.strokeStyle = '#888888';
-        ctx.lineWidth = 0.5;
+        // Connection line using configuration
+        const connectionConfig = this.mapConfig.CONNECTIONS;
+        ctx.strokeStyle = connectionConfig.COLOR;
+        ctx.lineWidth = connectionConfig.WIDTH;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);

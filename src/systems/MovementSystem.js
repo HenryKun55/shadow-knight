@@ -1,8 +1,19 @@
-// --- COMPLETE AND UNABRIDGED FILE ---
+/* ===================================
+   MOVEMENT SYSTEM - SHADOW KNIGHT
+   ===================================
+   Movement system using centralized GameConfig for physics and collision.
+   All physics constants and world bounds reference configuration.
+*/
+
+import { GameConfig } from '../config/GameConfig.js';
 
 export class MovementSystem {
   constructor() {
     this.game = null;
+    
+    // Cache physics configuration for performance
+    this.physicsConfig = GameConfig.PHYSICS;
+    this.worldBounds = GameConfig.WORLD.BOUNDS;
   }
 
   update(deltaTime) {
@@ -16,6 +27,7 @@ export class MovementSystem {
       const sprite = entity.getComponent('Sprite');
       const enemy = entity.getComponent('Enemy');
       const boss = entity.getComponent('Boss');
+      const player = entity.getComponent('Player');
 
       if (!position || !velocity) return;
 
@@ -29,22 +41,30 @@ export class MovementSystem {
         
         // Special ragdoll physics for dead enemies
         if (isDead && (enemy?.isRagdoll || boss?.isRagdoll)) {
-          // Air resistance for ragdolls
-          velocity.x *= 0.98;
-          velocity.y *= 0.999; // Slight air resistance on Y too
+          // Air resistance for ragdolls using configuration
+          velocity.x *= this.physicsConfig.RAGDOLL.AIR_RESISTANCE.X;
+          velocity.y *= this.physicsConfig.RAGDOLL.AIR_RESISTANCE.Y;
           
           if (collision) {
-            const groundY = 620;
+            // Get current room's ground level
+            const roomTransitionSystem = this.game.getSystem('RoomTransitionSystem');
+            const currentRoom = roomTransitionSystem?.rooms[roomTransitionSystem?.currentRoom];
+            const groundY = currentRoom?.customGroundLevel || this.physicsConfig.COLLISION.GROUND_LEVEL;
             const groundHit = position.y + collision.offsetY + collision.height >= groundY;
             
             // Ragdoll ground bouncing
             if (groundHit && velocity.y > 0) {
               const target = enemy || boss;
               
-              // First few bounces
-              if (target.bounces < 3 && Math.abs(velocity.y) > 50) {
-                velocity.y = -velocity.y * (0.4 - target.bounces * 0.1); // Decreasing bounce
-                velocity.x *= 0.7; // Lose horizontal momentum on bounce
+              // First few bounces using configuration
+              const maxBounces = this.physicsConfig.RAGDOLL.MAX_BOUNCES;
+              const bounceThreshold = this.physicsConfig.RAGDOLL.BOUNCE_VELOCITY_THRESHOLD;
+              
+              if (target.bounces < maxBounces && Math.abs(velocity.y) > bounceThreshold) {
+                const bounceForce = this.physicsConfig.RAGDOLL.BOUNCE_FORCE;
+                const bounceDecay = this.physicsConfig.RAGDOLL.BOUNCE_DECAY;
+                velocity.y = -velocity.y * (bounceForce - target.bounces * bounceDecay);
+                velocity.x *= this.physicsConfig.RAGDOLL.HORIZONTAL_BOUNCE_DAMPING;
                 target.bounces++;
                 
                 // Force proper ground position - stick to ground
@@ -52,20 +72,23 @@ export class MovementSystem {
               } else {
                 // Stop bouncing and STICK to ground
                 velocity.y = 0;
-                velocity.x *= 0.85; // Final settling
+                velocity.x *= this.physicsConfig.RAGDOLL.FINAL_SETTLING_DAMPING;
                 // CRITICAL: Force exact ground position like player
                 position.y = groundY - collision.height - collision.offsetY;
                 
                 // Capture final rotation based on velocity direction
                 const finalVelocityX = velocity.x;
                 
-                if (Math.abs(finalVelocityX) > 10) {
+                const minRotationVelocity = this.physicsConfig.RAGDOLL.MIN_ROTATION_VELOCITY;
+                if (Math.abs(finalVelocityX) > minRotationVelocity) {
                   // Lying on side based on final movement direction
-                  target.finalRotation = finalVelocityX > 0 ? Math.PI/2 : -Math.PI/2;
+                  const rightRotation = this.physicsConfig.RAGDOLL.ROTATION.RIGHT;
+                  const leftRotation = this.physicsConfig.RAGDOLL.ROTATION.LEFT;
+                  target.finalRotation = finalVelocityX > 0 ? rightRotation : leftRotation;
                   target.corpseDirection = finalVelocityX > 0 ? 1 : -1;
                 } else {
                   // Simple side lying (always same direction for consistency)
-                  target.finalRotation = Math.PI/2; // Always lie to the right
+                  target.finalRotation = this.physicsConfig.RAGDOLL.ROTATION.DEFAULT;
                   target.corpseDirection = 1;
                 }
                 
@@ -101,9 +124,12 @@ export class MovementSystem {
             return; // Skip all physics processing
           } else {
             // Recently dead but not yet corpse - minimal physics to settle
-            velocity.x *= 0.95;
+            velocity.x *= this.physicsConfig.DEAD_ENTITY.SETTLING_DAMPING;
             if (collision) {
-              const groundY = 620;
+              // Get current room's ground level
+              const roomTransitionSystem = this.game.getSystem('RoomTransitionSystem');
+              const currentRoom = roomTransitionSystem?.rooms[roomTransitionSystem?.currentRoom];
+              const groundY = currentRoom?.customGroundLevel || this.physicsConfig.COLLISION.GROUND_LEVEL;
               const groundHit = position.y + collision.offsetY + collision.height >= groundY;
               if (groundHit) {
                 position.y = groundY - collision.height - collision.offsetY;
@@ -115,24 +141,55 @@ export class MovementSystem {
           }
         } else {
           // Normal living entity physics
-          physics.applyFriction(velocity);
+          // Don't apply friction if player is dashing
+          if (!player || !player.isDashing) {
+            physics.applyFriction(velocity);
+          }
           if (collision) {
-            const groundY = 620;
-            physics.checkGroundCollision(position, velocity, groundY, collision);
+            // Check platform collision first
+            const roomTransitionSystem = this.game.getSystem('RoomTransitionSystem');
+            if (roomTransitionSystem) {
+              const currentRoom = roomTransitionSystem.rooms[roomTransitionSystem.currentRoom];
+              if (currentRoom && currentRoom.platforms) {
+                const platformCollision = physics.checkPlatformCollision(position, velocity, currentRoom.platforms, collision);
+                // Only check ground collision if no platform collision
+                if (!platformCollision) {
+                  // Get current room's ground level
+                  const roomTransitionSystem = this.game.getSystem('RoomTransitionSystem');
+                  const currentRoom = roomTransitionSystem?.rooms[roomTransitionSystem?.currentRoom];
+                  const groundY = currentRoom?.customGroundLevel || this.physicsConfig.COLLISION.GROUND_LEVEL;
+                  physics.checkGroundCollision(position, velocity, groundY, collision);
+                }
+              } else {
+                // Get current room's ground level
+                const roomTransitionSystem = this.game.getSystem('RoomTransitionSystem');
+                const currentRoom = roomTransitionSystem?.rooms[roomTransitionSystem?.currentRoom];
+                const groundY = currentRoom?.customGroundLevel || this.physicsConfig.COLLISION.GROUND_LEVEL;
+                physics.checkGroundCollision(position, velocity, groundY, collision);
+              }
+            } else {
+              // Get current room's ground level
+              const roomTransitionSystem = this.game.getSystem('RoomTransitionSystem');
+              const currentRoom = roomTransitionSystem?.rooms[roomTransitionSystem?.currentRoom];
+              const groundY = currentRoom?.customGroundLevel || this.physicsConfig.COLLISION.GROUND_LEVEL;
+              physics.checkGroundCollision(position, velocity, groundY, collision);
+            }
           }
         }
       }
 
-      position.x += velocity.x * (deltaTime / 1000);
-      position.y += velocity.y * (deltaTime / 1000);
+      // Apply velocity using time scaling configuration
+      const timeScale = this.physicsConfig.TIME_SCALE;
+      position.x += velocity.x * (deltaTime / 1000) * timeScale;
+      position.y += velocity.y * (deltaTime / 1000) * timeScale;
 
       if (collision && sprite) {
         const bounds = collision.getBounds(position, sprite, entity);
         if (bounds.x < 0) {
           position.x = 0 - (bounds.x - position.x);
           velocity.x = 0;
-        } else if (bounds.x + bounds.width > this.game.worldBounds.width) {
-          position.x = this.game.worldBounds.width - bounds.width - (bounds.x - position.x);
+        } else if (bounds.x + bounds.width > this.worldBounds.width) {
+          position.x = this.worldBounds.width - bounds.width - (bounds.x - position.x);
           velocity.x = 0;
         }
         if (bounds.y < 0) {

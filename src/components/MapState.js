@@ -1,11 +1,23 @@
+/* ===================================
+   MAP STATE COMPONENT - SHADOW KNIGHT
+   ===================================
+   Map state component using centralized GameConfig for map settings.
+   All map behavior and defaults reference configuration.
+*/
+
+import { GameConfig } from '../config/GameConfig.js';
+
 export class MapState {
   constructor() {
     this.isOpen = false;
     this.wasMovingBeforeMap = false;
     this.mapOpenTime = 0;
-    this.currentRoom = 0;
-    this.visitedRooms = new Set([0]); // Start with room 0 visited
-    this.slowMovementFactor = 0.3; // Player moves at 30% speed when viewing map
+    
+    // Use map configuration
+    const mapConfig = GameConfig.ROOMS.MAP;
+    this.currentRoom = GameConfig.ROOMS.INITIAL_ROOM;
+    this.visitedRooms = new Set([this.currentRoom]);
+    this.slowMovementFactor = mapConfig.SLOW_MOVEMENT_FACTOR;
   }
 
   openMap() {

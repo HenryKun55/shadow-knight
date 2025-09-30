@@ -1,4 +1,11 @@
-// --- COMPLETE AND UNABRIDGED FILE ---
+/* ===================================
+   BOSS COMPONENT - SHADOW KNIGHT
+   ===================================
+   Boss component using centralized GameConfig for boss mechanics.
+   All boss values and behavior reference configuration.
+*/
+
+import { GameConfig } from '../config/GameConfig.js';
 
 export class Boss {
   constructor(definition) {
@@ -18,7 +25,10 @@ export class Boss {
     this.attackRange = definition.attackRange || 100;
     this.detectionRange = definition.detectionRange || 400;
 
-    this.state = 'dormant';
+    // Use boss configuration
+    const bossConfig = GameConfig.BOSS;
+    
+    this.state = bossConfig.INITIAL_STATE;
     this.target = null;
     this.stateTimer = 0;
     this.facingDirection = 1;
@@ -26,17 +36,17 @@ export class Boss {
     this.attackPatterns = definition.attackPatterns;
     this.currentAttackPattern = null;
     this.attackPatternStep = 0;
-    this.attackCooldown = 1500;
+    this.attackCooldown = bossConfig.ATTACK_COOLDOWN;
     this.lastAttackTime = 0;
 
     this.isInvulnerable = false;
     this.invulnerabilityTime = 0;
-    this.enrageThreshold = 0.3;
+    this.enrageThreshold = bossConfig.ENRAGE_THRESHOLD;
     this.isEnraged = false;
     
-    // Death state properties (same as Enemy)
+    // Death state properties using configuration
     this.deathTime = 0;
-    this.deathAnimationDuration = 1000; // 1 second death animation
+    this.deathAnimationDuration = bossConfig.DEATH.ANIMATION_DURATION;
     this.isCorpse = false;
     this.isRagdoll = false; // Physics-based death animation
     this.bounces = 0; // Track ground bounces

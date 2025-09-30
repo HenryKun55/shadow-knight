@@ -1,3 +1,9 @@
+/* ===================================
+   POSITION COMPONENT - SHADOW KNIGHT
+   ===================================
+   Position component for spatial coordinates and movement tracking.
+*/
+
 export class Position {
     constructor(x = 0, y = 0) {
         this.x = x;

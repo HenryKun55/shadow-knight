@@ -214,6 +214,14 @@
             applyVolume('sfx', volumes.sfx);
         };
         
+        // Expose functions globally for HTML onclick handlers
+        window.changeVolume = changeVolume;
+        window.setVolume = setVolume;
+        window.setResolutionButton = function(resolution) {
+            changeResolution(resolution);
+            updateResolutionDisplay();
+        };
+        
         function loadSavedResolution() {
             try {
                 const saved = localStorage.getItem(GameConfig.STORAGE.KEYS.RESOLUTION);

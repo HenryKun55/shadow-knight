@@ -1,8 +1,18 @@
-// --- COMPLETE AND UNABRIDGED FILE ---
+/* ===================================
+   PLAYER CONTROL SYSTEM - SHADOW KNIGHT
+   ===================================
+   Handles player input and movement using centralized GameConfig.
+   All input mappings and player controls reference configuration.
+*/
+
+import { GameConfig } from '../config/GameConfig.js';
 
 export class PlayerControlSystem {
   constructor() {
     this.game = null;
+    
+    // Cache input configuration for performance
+    this.inputConfig = GameConfig.INPUT.KEYS;
   }
 
   update(deltaTime) {
@@ -47,9 +57,12 @@ export class PlayerControlSystem {
     if (velocity) {
       velocity.x = 0;
     }
-    if (sprite && sprite.color !== '#555555') {
-      sprite.color = '#555555';
-      sprite.playAnimation('idle'); // Reset animation to idle on death
+    if (sprite && sprite.color !== GameConfig.COLORS.PLAYER.DEAD) {
+      sprite.color = GameConfig.COLORS.PLAYER.DEAD;
+      sprite.playAnimation(GameConfig.ANIMATION.PLAYER.IDLE.name);
+      
+      // Play death sound
+      this.game.soundManager.play(GameConfig.AUDIO.SOUND_NAMES.PLAYER_DEATH);
     }
     if (player) {
       // Reset combat states on death
@@ -57,7 +70,56 @@ export class PlayerControlSystem {
       player.isDashing = false;
       player.attackTime = 0;
       player.dashTime = 0;
+      
+      // Show Game Over after a delay
+      if (!player.gameOverShown) {
+        player.gameOverShown = true;
+        setTimeout(() => {
+          this.showGameOver();
+        }, GameConfig.PLAYER.DEATH.GAME_OVER_DELAY);
+      }
     }
+  }
+  
+  showGameOver() {
+    // Stop the game
+    this.game.isRunning = false;
+    
+    // Create Game Over overlay
+    const gameOverDiv = document.createElement('div');
+    gameOverDiv.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+      color: white;
+      font-family: monospace;
+    `;
+    
+    gameOverDiv.innerHTML = `
+      <h1 style="font-size: ${GameConfig.UI.GAME_OVER.TITLE_FONT_SIZE}; margin-bottom: 20px; color: ${GameConfig.UI.GAME_OVER.TITLE_COLOR};">GAME OVER</h1>
+      <p style="font-size: ${GameConfig.UI.GAME_OVER.SUBTITLE_FONT_SIZE}; margin-bottom: 30px;">Press SPACE to restart</p>
+    `;
+    
+    document.body.appendChild(gameOverDiv);
+    
+    // Listen for restart
+    const restartHandler = (e) => {
+      if (e.code === 'Space') {
+        document.removeEventListener('keydown', restartHandler);
+        document.body.removeChild(gameOverDiv);
+        window.location.reload(); // Restart the game
+      }
+    };
+    
+    document.addEventListener('keydown', restartHandler);
   }
 
 
@@ -69,46 +131,61 @@ export class PlayerControlSystem {
     const mapSystem = this.game.getSystem('MapSystem');
     const isViewingMap = mapSystem && mapSystem.isMapOpen();
     
-    // Movimento horizontal sempre permitido
-    if (input.isKeyDown('KeyA') || input.isKeyDown('ArrowLeft')) moveDirection -= 1;
-    if (input.isKeyDown('KeyD') || input.isKeyDown('ArrowRight')) moveDirection += 1;
+    // Movement input using configuration
+    const leftKeys = this.inputConfig.MOVEMENT.LEFT;
+    const rightKeys = this.inputConfig.MOVEMENT.RIGHT;
+    
+    // Check left movement keys
+    if (leftKeys.some(key => input.isKeyDown(key))) moveDirection -= 1;
+    // Check right movement keys  
+    if (rightKeys.some(key => input.isKeyDown(key))) moveDirection += 1;
 
     if (!player.isDashing && !player.isAttacking) {
       if (moveDirection !== 0) {
         player.facingDirection = moveDirection;
         let speed = player.speed;
 
-        // Movimento mais lento quando vendo mapa
+        // Use configured map speed modifier
         if (isViewingMap) {
-          speed *= 0.4; // Velocidade reduzida enquanto vê mapa
+          speed *= GameConfig.PLAYER.MOVEMENT.MAP_SPEED_MODIFIER;
         }
 
         velocity.x = moveDirection * speed;
         if (sprite) sprite.flipX = moveDirection < 0;
       } else {
-        velocity.x *= physics.onGround ? 0.6 : 0.98;
+        // Use physics friction values from configuration
+        velocity.x *= physics.onGround ? 
+          GameConfig.PHYSICS.FRICTION.GROUND : 
+          GameConfig.PHYSICS.FRICTION.AIR;
       }
     }
 
     // Pulo e dash desabilitados quando vendo mapa
     if (!isViewingMap) {
-      if (input.isKeyPressed('KeyK')) {
+      // Jump input using configuration
+      const jumpKeys = this.inputConfig.MOVEMENT.JUMP;
+      if (jumpKeys.some(key => input.isKeyPressed(key))) {
         player.lastJumpInput = Date.now();
       }
 
       if (player.canJump(physics)) {
         if (player.jump(physics)) {
           velocity.y = -player.jumpPower;
-          this.game.soundManager.play('jump');
+          this.game.soundManager.play(GameConfig.AUDIO.SOUND_NAMES.JUMP);
           player.lastJumpInput = 0;
         }
       }
 
-      if (input.isKeyPressed('KeyL')) {
+      // Dash input using configuration
+      const dashKeys = this.inputConfig.MOVEMENT.DASH;
+      if (dashKeys.some(key => input.isKeyPressed(key))) {
         if (player.startDash()) {
           velocity.x = player.facingDirection * player.dashSpeed;
-          velocity.y = 0;
-          this.game.soundManager.play('dash');
+          // Só zera velocity.y se estiver no chão
+          if (physics.onGround) {
+            velocity.y = 0;
+          }
+          this.game.soundManager.play(GameConfig.AUDIO.SOUND_NAMES.DASH);
         }
       }
     }
@@ -116,15 +193,24 @@ export class PlayerControlSystem {
 
   handleCombatInput(player, physics) {
     const input = this.game.inputManager;
-    if (input.isKeyDown('KeyJ')) {
+    
+    // Attack input using configuration - usar isKeyPressed para ataque único
+    const attackKeys = this.inputConfig.COMBAT.ATTACK;
+    if (attackKeys.some(key => input.isKeyPressed(key))) {
       let direction = 'none';
-      if (input.isKeyDown('ArrowUp') || input.isKeyDown('KeyW')) {
+      
+      // Directional attack input using configuration
+      const upKeys = this.inputConfig.MOVEMENT.UP;
+      const downKeys = this.inputConfig.MOVEMENT.DOWN;
+      
+      if (upKeys.some(key => input.isKeyDown(key))) {
         direction = 'up';
-      } else if (input.isKeyDown('ArrowDown') || input.isKeyDown('KeyS')) {
+      } else if (downKeys.some(key => input.isKeyDown(key))) {
         direction = 'down';
       }
+      
       if (player.startAttack(direction, physics)) {
-        this.game.soundManager.play('attack');
+        this.game.soundManager.play(GameConfig.AUDIO.SOUND_NAMES.ATTACK);
       }
     }
   }
@@ -132,14 +218,18 @@ export class PlayerControlSystem {
   updateAnimations(player, velocity, physics, sprite) {
     if (!sprite || player.isDashing || player.isDead()) return;
 
+    // Use animation names from configuration
+    const animations = GameConfig.ANIMATION.PLAYER;
+    
     if (player.isAttacking) {
-      sprite.playAnimation('attack');
+      sprite.playAnimation(animations.ATTACK.name);
     } else if (!physics.onGround) {
-      sprite.playAnimation(velocity.y < 0 ? 'jump' : 'fall');
-    } else if (Math.abs(velocity.x) > 1) {
-      sprite.playAnimation('run');
+      const animName = velocity.y < 0 ? animations.JUMP.name : animations.FALL.name;
+      sprite.playAnimation(animName);
+    } else if (Math.abs(velocity.x) > GameConfig.PLAYER.MOVEMENT.MIN_RUN_VELOCITY) {
+      sprite.playAnimation(animations.RUN.name);
     } else {
-      sprite.playAnimation('idle');
+      sprite.playAnimation(animations.IDLE.name);
     }
   }
 }

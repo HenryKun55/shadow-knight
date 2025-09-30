@@ -1,8 +1,16 @@
+/* ===================================
+   VELOCITY COMPONENT - SHADOW KNIGHT
+   ===================================
+   Velocity component using centralized GameConfig for speed limits.
+*/
+
+import { GameConfig } from '../config/GameConfig.js';
+
 export class Velocity {
     constructor(x = 0, y = 0) {
         this.x = x;
         this.y = y;
-        this.maxSpeed = 1000;
+        this.maxSpeed = GameConfig.PHYSICS.MAX_VELOCITY;
     }
     
     set(x, y) {

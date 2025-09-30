@@ -1,46 +1,61 @@
-// --- COMPLETE AND UNABRIDGED FILE ---
+/* ===================================
+   ENEMY COMPONENT - SHADOW KNIGHT
+   ===================================
+   Enemy component using centralized GameConfig for stats and behavior.
+   All enemy values and timing reference configuration.
+*/
+
+import { GameConfig } from '../config/GameConfig.js';
 
 export class Enemy {
   constructor(type = 'basic', options = {}) {
     this.type = type;
-    this.maxHealth = options.maxHealth || 50;
+    
+    // Get enemy configuration
+    const enemyConfig = GameConfig.ENEMIES.TYPES[type.toUpperCase()] || GameConfig.ENEMIES.TYPES.GOBLIN;
+    const defaults = GameConfig.ENEMIES.DEFAULTS;
+    
+    // Use configuration for stats
+    this.maxHealth = options.maxHealth || enemyConfig.maxHealth || defaults.MAX_HEALTH;
     this.health = this.maxHealth;
-    this.damage = options.damage || 15;
-    this.speed = options.speed || 80;
-    this.attackRange = options.attackRange || 60;
-    this.detectionRange = options.detectionRange || 200;
-    this.attackCooldown = options.attackCooldown || 1500;
+    this.damage = options.damage || enemyConfig.damage || defaults.DAMAGE;
+    this.speed = options.speed || enemyConfig.speed || defaults.SPEED;
+    this.attackRange = options.attackRange || enemyConfig.attackRange || defaults.ATTACK_RANGE;
+    this.detectionRange = options.detectionRange || enemyConfig.detectionRange || defaults.DETECTION_RANGE;
+    this.attackCooldown = options.attackCooldown || defaults.ATTACK_COOLDOWN;
 
-    this.state = 'idle'; // idle, chase, attack, stunned, dead
+    this.state = defaults.INITIAL_STATE;
     this.target = null;
     this.lastAttackTime = 0;
     this.stateTimer = 0;
 
     this.facingDirection = 1;
 
+    // Combat properties using configuration
     this.isAttacking = false;
-    this.attackDuration = 400;
+    this.attackDuration = defaults.ATTACK_DURATION;
     this.attackTime = 0;
-    this.stunDuration = 800;
+    this.stunDuration = defaults.STUN_DURATION;
     this.invulnerabilityTime = 0;
     
-    // Death state properties
+    // Death state properties using configuration
+    const deathConfig = defaults.DEATH;
     this.deathTime = 0;
-    this.deathAnimationDuration = 1000; // 1 second death animation
+    this.deathAnimationDuration = deathConfig.ANIMATION_DURATION;
     this.isCorpse = false;
-    this.isRagdoll = false; // Physics-based death animation
-    this.bounces = 0; // Track ground bounces
-    this.finalRotation = 0; // Final rotation when ragdoll stops
-    this.corpseDirection = 1; // Which direction corpse is facing
-    this.corpseCollisionWidth = 0; // Adjusted collision width for corpse
-    this.corpseCollisionHeight = 0; // Adjusted collision height for corpse
+    this.isRagdoll = false;
+    this.bounces = 0;
+    this.finalRotation = 0;
+    this.corpseDirection = 1;
+    this.corpseCollisionWidth = 0;
+    this.corpseCollisionHeight = 0;
   }
 
   takeDamage(amount) {
     if (this.invulnerabilityTime > 0 || this.isDead()) return false;
 
     this.health = Math.max(0, this.health - amount);
-    this.invulnerabilityTime = 300;
+    this.invulnerabilityTime = GameConfig.ENEMIES.DEFAULTS.INVULNERABILITY_DURATION;
 
     if (this.health > 0) {
       this.state = 'stunned';

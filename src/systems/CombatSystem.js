@@ -1,13 +1,24 @@
-// --- COMPLETE AND UNABRIDGED FILE ---
+/* ===================================
+   COMBAT SYSTEM - SHADOW KNIGHT
+   ===================================
+   Combat system using centralized GameConfig for damage, hitboxes, and effects.
+   All combat values and timings reference configuration.
+*/
 
 import { UISystem } from './UISystem.js';
 import { cheats } from '../core/cheat.js';
+import { GameConfig } from '../config/GameConfig.js';
 
 export class CombatSystem {
   constructor() {
     this.game = null;
     this.activeHitboxes = [];
     this.activeVisualEffects = [];
+    
+    // Cache combat configuration for performance
+    this.combatConfig = GameConfig.COMBAT;
+    this.playerCombat = GameConfig.COMBAT.PLAYER;
+    this.soundNames = GameConfig.AUDIO.SOUND_NAMES;
   }
 
   update(deltaTime) {
@@ -48,7 +59,9 @@ export class CombatSystem {
 
       if (player.isAttacking) {
         const attackProgress = player.attackTime / player.attackDuration;
-        if (attackProgress >= 0.4 && attackProgress <= 0.6) {
+        // Use configured attack timing window
+        const attackWindow = this.playerCombat.ATTACK_WINDOW;
+        if (attackProgress >= attackWindow.START && attackProgress <= attackWindow.END) {
           const hitboxData = this.getPlayerHitboxData(player, position);
           this.createHitbox(playerEntity, {
             ...hitboxData,
@@ -75,7 +88,7 @@ export class CombatSystem {
           width: bounds.width,
           height: bounds.height,
           damage: player.dashDamage,
-          duration: 50, // Short duration for dash hitbox
+          duration: this.combatConfig.DASH_ATTACK.HITBOX_DURATION,
           attackId: 'dash_attack_' + Date.now(),
         });
       }
@@ -83,41 +96,53 @@ export class CombatSystem {
   }
 
   getPlayerHitboxData(player, position) {
-    let baseWidth = 60;
-    let baseHeight = 40;
-    let baseOffsetX = (player.facingDirection > 0 ? 16 : -76);
-    let baseOffsetY = -5;
-    let damage = 25;
-    let knockback = 150;
-    let duration = 100; // Default duration
+    // Use configuration for base hitbox values
+    const baseConfig = this.playerCombat.HITBOX.BASE;
+    let baseWidth = baseConfig.WIDTH;
+    let baseHeight = baseConfig.HEIGHT;
+    let baseOffsetX = (player.facingDirection > 0 ? baseConfig.OFFSET_X_RIGHT : baseConfig.OFFSET_X_LEFT);
+    let baseOffsetY = baseConfig.OFFSET_Y;
+    let damage = baseConfig.DAMAGE;
+    let knockback = baseConfig.KNOCKBACK;
+    let duration = baseConfig.DURATION;
 
     if (player.attackDirection === 'up') {
-      baseWidth = 40;
-      baseHeight = 60;
-      baseOffsetX = (player.facingDirection > 0 ? 26 : -66);
-      baseOffsetY = -80; // Above player
-      damage = 30;
-      knockback = 100;
-      duration = 200; // Longer duration for visibility
+      const upConfig = this.playerCombat.HITBOX.UP;
+      baseWidth = upConfig.WIDTH;
+      baseHeight = upConfig.HEIGHT;
+      baseOffsetX = (player.facingDirection > 0 ? upConfig.OFFSET_X_RIGHT : upConfig.OFFSET_X_LEFT);
+      baseOffsetY = upConfig.OFFSET_Y;
+      damage = upConfig.DAMAGE;
+      knockback = upConfig.KNOCKBACK;
+      duration = upConfig.DURATION;
     } else if (player.attackDirection === 'down') {
-      baseWidth = 40;
-      baseHeight = 60;
-      baseOffsetX = (player.facingDirection > 0 ? 26 : -66);
-      baseOffsetY = 20; // Below player
-      damage = 30;
-      knockback = 100;
-      duration = 200; // Longer duration for visibility
+      const downConfig = this.playerCombat.HITBOX.DOWN;
+      baseWidth = downConfig.WIDTH;
+      baseHeight = downConfig.HEIGHT;
+      baseOffsetX = (player.facingDirection > 0 ? downConfig.OFFSET_X_RIGHT : downConfig.OFFSET_X_LEFT);
+      baseOffsetY = downConfig.OFFSET_Y;
+      damage = downConfig.DAMAGE;
+      knockback = downConfig.KNOCKBACK;
+      duration = downConfig.DURATION;
     }
 
     let hitboxX = position.x + baseOffsetX;
     let hitboxY = position.y + baseOffsetY;
 
-    switch (player.comboCount) {
-      case 1: return { damage: damage, knockback: knockback, width: baseWidth, height: baseHeight, x: hitboxX, y: hitboxY, duration: duration };
-      case 2: return { damage: damage + 5, knockback: knockback + 30, width: baseWidth + 20, height: baseHeight, x: hitboxX - 10, y: hitboxY, duration: duration };
-      case 3: return { damage: damage + 10, knockback: knockback + 100, width: baseWidth + 30, height: baseHeight + 10, x: hitboxX - 15, y: hitboxY - 5, duration: duration };
-      default: return { damage: damage, knockback: knockback, width: baseWidth, height: baseHeight, x: hitboxX, y: hitboxY, duration: duration };
-    }
+    // Apply combo modifiers using configuration
+    const comboConfig = this.playerCombat.COMBO;
+    const comboIndex = Math.min(player.comboCount, comboConfig.length) - 1;
+    const combo = comboConfig[comboIndex] || comboConfig[0];
+    
+    return {
+      damage: damage + combo.DAMAGE_BONUS,
+      knockback: knockback + combo.KNOCKBACK_BONUS,
+      width: baseWidth + combo.WIDTH_BONUS,
+      height: baseHeight + combo.HEIGHT_BONUS,
+      x: hitboxX + combo.OFFSET_X_BONUS,
+      y: hitboxY + combo.OFFSET_Y_BONUS,
+      duration: duration
+    };
   }
 
   checkAllCollisions() {
@@ -153,12 +178,13 @@ export class CombatSystem {
           damageToDeal = target.health; // Deal enough damage to kill in one hit
         }
         if (target.takeDamage(damageToDeal)) {
-          this.game.soundManager.play('enemyHit');
+          this.game.soundManager.play(this.soundNames.ENEMY_HIT);
           if (sprite) {
-            sprite.flash('#ffffff', 150); // Flash white for 150ms when hit
+            const flashConfig = this.combatConfig.HIT_FLASH;
+            sprite.flash(flashConfig.COLOR, flashConfig.DURATION);
           }
           if (target.isDead()) {
-            this.game.soundManager.play('enemyDeath');
+            this.game.soundManager.play(this.soundNames.ENEMY_DEATH);
             this.handleEnemyDeath(targetEntity, target, sprite, velocity);
           }
         }
@@ -176,6 +202,9 @@ export class CombatSystem {
       const collision = targetEntity.getComponent('Collision');
       const sprite = targetEntity.getComponent('Sprite');
       if (!player || player.isDead()) return;
+      
+      // Don't damage player during room transitions
+      if (player.isTransitioning) return;
 
       const targetBounds = collision.getBounds(position, sprite, targetEntity);
       if (this.checkRectCollision(hitbox, targetBounds)) {
@@ -185,7 +214,7 @@ export class CombatSystem {
           return;
         }
         if (player.takeDamage(hitbox.damage, sprite)) {
-          this.game.soundManager.play('playerHit');
+          this.game.soundManager.play(this.soundNames.PLAYER_HIT);
           if (uiSystem) {
             const screenPos = this.game.worldToScreen(position.x, position.y);
             uiSystem.showDamageNumber(hitbox.damage, screenPos.x, screenPos.y);
@@ -206,22 +235,28 @@ export class CombatSystem {
       width: options.width,
       height: options.height,
       damage: options.damage,
-      duration: options.duration || 100,
+      duration: options.duration || this.combatConfig.DEFAULT_HITBOX_DURATION,
       attackId: options.attackId,
       velocity: options.velocity || null,
       hitEntities: new Set()
     };
     this.activeHitboxes.push(hitbox);
 
+    // Create visual effect using configuration
+    const visualConfig = this.combatConfig.VISUAL_EFFECTS;
+    const effectDuration = hitbox.duration + visualConfig.EXTRA_DURATION;
+    
     this.activeVisualEffects.push({
       x: hitbox.x,
       y: hitbox.y,
       width: hitbox.width,
       height: hitbox.height,
-      duration: hitbox.duration + 20, // Visual lasts slightly longer
-      initialDuration: hitbox.duration + 20,
-      velocity: hitbox.velocity, // Pass velocity to visual effect
-      color: sourceEntity.hasComponent('Player') ? 'rgba(255, 255, 150, 0.7)' : 'rgba(255, 100, 100, 0.7)'
+      duration: effectDuration,
+      initialDuration: effectDuration,
+      velocity: hitbox.velocity,
+      color: sourceEntity.hasComponent('Player') ? 
+        visualConfig.PLAYER_COLOR : 
+        visualConfig.ENEMY_COLOR
     });
   }
 
@@ -232,14 +267,16 @@ export class CombatSystem {
   handleEnemyDeath(targetEntity, target, sprite, velocity) {    
     console.log(`handleEnemyDeath called for ${target.constructor.name}`);
     
-    // Realistic ragdoll physics
+    // Realistic ragdoll physics using configuration
     if (velocity) {
-      // Random death impulse for variety
+      const ragdollConfig = this.combatConfig.RAGDOLL;
       const randomDirection = (Math.random() - 0.5) * 2; // -1 to 1
-      const knockbackForce = 150 + Math.random() * 100; // 150-250
+      const knockbackForce = ragdollConfig.KNOCKBACK_FORCE.MIN + 
+        Math.random() * (ragdollConfig.KNOCKBACK_FORCE.MAX - ragdollConfig.KNOCKBACK_FORCE.MIN);
       
       velocity.x = randomDirection * knockbackForce;
-      velocity.y = -200 - Math.random() * 100; // Strong upward impulse (-200 to -300)
+      velocity.y = ragdollConfig.UPWARD_IMPULSE.MIN - 
+        Math.random() * (ragdollConfig.UPWARD_IMPULSE.MAX - ragdollConfig.UPWARD_IMPULSE.MIN);
     }
     
     // Mark as ragdoll for special physics handling
@@ -249,7 +286,7 @@ export class CombatSystem {
     console.log(`After ragdoll setup for ${target.constructor.name}: isRagdoll=${target.isRagdoll}`);
     
     if (sprite) {
-      sprite.playAnimation('idle');
+      sprite.playAnimation(GameConfig.ANIMATION.ENEMY.IDLE.name);
     }
   }
 
@@ -263,8 +300,9 @@ export class CombatSystem {
     ctx.restore();
 
     if (this.game.debugMode) {
-      ctx.strokeStyle = '#ff0000';
-      ctx.lineWidth = 2;
+      const debugConfig = GameConfig.DEBUG;
+      ctx.strokeStyle = debugConfig.COLORS.HITBOX;
+      ctx.lineWidth = debugConfig.LINE_WIDTH;
       this.activeHitboxes.forEach(hitbox => {
         ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
       });

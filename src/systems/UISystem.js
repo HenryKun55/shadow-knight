@@ -1,12 +1,27 @@
-// --- COMPLETE AND UNABRIDGED FILE ---
+/* ===================================
+   UI SYSTEM - SHADOW KNIGHT
+   ===================================
+   UI system using centralized GameConfig and UIConstants for all interface elements.
+   All UI colors, thresholds, and styling reference configuration.
+*/
+
+import { GameConfig } from '../config/GameConfig.js';
+import { UIConstants } from '../config/UIConstants.js';
 
 export class UISystem {
   constructor() {
     this.game = null;
-    this.healthFill = document.getElementById('health-fill');
-    this.staminaFill = document.getElementById('stamina-fill');
-    this.healthText = document.querySelector('.health-text');
+    
+    // Cache UI elements using UIConstants
+    this.healthFill = UIConstants.UTILS.safeQuerySelector(UIConstants.SELECTORS.HEALTH_FILL);
+    this.staminaFill = UIConstants.UTILS.safeQuerySelector(UIConstants.SELECTORS.STAMINA_FILL);
+    this.healthText = UIConstants.UTILS.safeQuerySelector(UIConstants.SELECTORS.HEALTH_TEXT);
     this.gameOverShown = false;
+    
+    // Cache UI configuration for performance
+    this.uiConfig = GameConfig.UI;
+    this.healthColors = this.uiConfig.HEALTH_BAR.COLORS;
+    this.thresholds = this.uiConfig.HEALTH_BAR.THRESHOLDS;
   }
 
   update(deltaTime) {
@@ -18,8 +33,12 @@ export class UISystem {
     this.updateStaminaBar(player);
 
     if (player.isDead() && !this.gameOverShown) {
-      // Updated message
-      this.showStatusMessage('GAME OVER\n\nPress Space to Restart', 9999999, '#ff4757');
+      // Show game over message using configuration
+      this.showStatusMessage(
+        UIConstants.MESSAGES.GAME_OVER, 
+        this.uiConfig.MESSAGES.PERMANENT_DURATION, 
+        this.uiConfig.MESSAGES.GAME_OVER_COLOR
+      );
       this.gameOverShown = true;
     }
   }
@@ -28,9 +47,15 @@ export class UISystem {
     const healthPercentage = (player.health / player.maxHealth) * 100;
     if (this.healthFill) {
       this.healthFill.style.width = `${healthPercentage}%`;
-      if (healthPercentage > 60) this.healthFill.style.background = 'linear-gradient(90deg, #ff4757, #ff6b6b)';
-      else if (healthPercentage > 30) this.healthFill.style.background = 'linear-gradient(90deg, #ffa502, #ff6348)';
-      else this.healthFill.style.background = 'linear-gradient(90deg, #ff3838, #ff4757)';
+      
+      // Apply health bar colors based on configuration thresholds
+      if (healthPercentage > this.thresholds.GOOD) {
+        this.healthFill.style.background = this.healthColors.GOOD;
+      } else if (healthPercentage > this.thresholds.WARNING) {
+        this.healthFill.style.background = this.healthColors.WARNING;
+      } else {
+        this.healthFill.style.background = this.healthColors.CRITICAL;
+      }
     }
     if (this.healthText) {
       this.healthText.textContent = `${Math.ceil(player.health)}/${player.maxHealth}`;
@@ -41,74 +66,101 @@ export class UISystem {
     const staminaPercentage = (player.stamina / player.maxStamina) * 100;
     if (this.staminaFill) {
       this.staminaFill.style.width = `${staminaPercentage}%`;
-      this.staminaFill.style.opacity = staminaPercentage < 30 ? '0.6' : '1.0';
+      
+      // Apply stamina opacity based on configuration threshold
+      const lowStaminaThreshold = this.uiConfig.STAMINA_BAR.LOW_THRESHOLD;
+      const lowOpacity = this.uiConfig.STAMINA_BAR.LOW_OPACITY;
+      this.staminaFill.style.opacity = staminaPercentage < lowStaminaThreshold ? lowOpacity : '1.0';
     }
   }
 
-  showDamageNumber(amount, x, y, color = '#ff4757') {
+  showDamageNumber(amount, x, y, color = null) {
     const damageElement = document.createElement('div');
     damageElement.textContent = `${Math.round(amount)}`;
-    damageElement.className = 'damage-number';
+    damageElement.className = UIConstants.CLASSES.DAMAGE_NUMBER;
     damageElement.style.left = `${x}px`;
     damageElement.style.top = `${y}px`;
-    damageElement.style.color = color;
+    damageElement.style.color = color || this.uiConfig.DAMAGE_NUMBERS.DEFAULT_COLOR;
     document.body.appendChild(damageElement);
+    
+    // Use configured duration
+    const duration = this.uiConfig.DAMAGE_NUMBERS.DURATION;
     setTimeout(() => {
       if (damageElement.parentNode) {
         damageElement.parentNode.removeChild(damageElement);
       }
-    }, 1000);
+    }, duration);
   }
 
-  showStatusMessage(message, duration = 2000, color = '#ffffff') {
+  showStatusMessage(message, duration = null, color = null) {
     const messageElement = document.createElement('div');
     messageElement.innerHTML = message.replace(/\n/g, '<br>'); // Handle newlines
-    messageElement.className = 'status-message';
-    messageElement.style.color = color;
+    messageElement.className = UIConstants.CLASSES.STATUS_MESSAGE;
+    messageElement.style.color = color || this.uiConfig.MESSAGES.DEFAULT_COLOR;
     messageElement.style.whiteSpace = 'pre-wrap'; // Ensure newlines are rendered
     document.body.appendChild(messageElement);
 
-    if (duration < 999999) {
+    // Use configured durations
+    const effectiveDuration = duration || this.uiConfig.MESSAGES.DEFAULT_DURATION;
+    const permanentThreshold = this.uiConfig.MESSAGES.PERMANENT_THRESHOLD;
+    const fadeOutDuration = this.uiConfig.ANIMATION.FADE_OUT_DURATION;
+    
+    if (effectiveDuration < permanentThreshold) {
       setTimeout(() => {
         if (messageElement.parentNode) {
-          messageElement.style.animation = 'fadeOut 0.5s ease-in-out forwards';
+          messageElement.style.animation = `${UIConstants.ANIMATIONS.FADE_OUT} ${fadeOutDuration}ms ease-in-out forwards`;
           setTimeout(() => {
             if (messageElement.parentNode) {
               messageElement.parentNode.removeChild(messageElement);
             }
-          }, 500);
+          }, fadeOutDuration);
         }
-      }, duration);
+      }, effectiveDuration);
     }
   }
 }
 
-if (!document.getElementById('game-animations-style')) {
+// Initialize dynamic UI styles using configuration
+if (!document.getElementById(UIConstants.STYLE_IDS.GAME_ANIMATIONS)) {
   const style = document.createElement('style');
-  style.id = 'game-animations-style';
+  style.id = UIConstants.STYLE_IDS.GAME_ANIMATIONS;
+  
+  // Build styles using configuration values
+  const damageConfig = GameConfig.UI.DAMAGE;
+  const messageConfig = GameConfig.UI.MESSAGES;
+  const animConfig = GameConfig.UI.ANIMATION;
+  
   style.textContent = `
-        .damage-number {
-            position: absolute; font-size: 20px; font-weight: bold; pointer-events: none;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 1000;
-            animation: floatUp 1s ease-out forwards;
+        .${UIConstants.CLASSES.DAMAGE_NUMBER} {
+            position: absolute; 
+            font-size: ${damageConfig.FONT_SIZE}; 
+            font-weight: ${damageConfig.FONT_WEIGHT}; 
+            pointer-events: none;
+            text-shadow: ${damageConfig.TEXT_SHADOW}; 
+            z-index: ${damageConfig.Z_INDEX};
+            animation: ${UIConstants.ANIMATIONS.FLOAT_UP} ${damageConfig.DURATION}ms ease-out forwards;
         }
-        .status-message {
+        .${UIConstants.CLASSES.STATUS_MESSAGE} {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 60px; font-weight: bold; text-align: center;
-            text-shadow: 3px 3px 6px rgba(0,0,0,0.8); pointer-events: none;
-            z-index: 1001; animation: fadeInOut 0.5s ease-in-out;
+            font-size: ${messageConfig.FONT_SIZE}; 
+            font-weight: ${messageConfig.FONT_WEIGHT}; 
+            text-align: center;
+            text-shadow: ${messageConfig.TEXT_SHADOW}; 
+            pointer-events: none;
+            z-index: ${messageConfig.Z_INDEX}; 
+            animation: ${UIConstants.ANIMATIONS.FADE_IN_OUT} ${animConfig.FADE_IN_DURATION}ms ease-in-out;
         }
-        @keyframes floatUp {
+        @keyframes ${UIConstants.ANIMATIONS.FLOAT_UP} {
             0% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-50px); }
+            100% { opacity: 0; transform: translateY(${animConfig.FLOAT_DISTANCE}); }
         }
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-            100% { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
+        @keyframes ${UIConstants.ANIMATIONS.FADE_IN_OUT} {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(${animConfig.SCALE_START}); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(${animConfig.SCALE_PEAK}); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(${animConfig.SCALE_END}); }
         }
-        @keyframes fadeOut {
+        @keyframes ${UIConstants.ANIMATIONS.FADE_OUT} {
             0% { opacity: 1; }
             100% { opacity: 0; }
         }

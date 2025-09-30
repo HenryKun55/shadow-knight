@@ -1,49 +1,125 @@
+/* ===================================
+   ROOM COMPONENT - SHADOW KNIGHT
+   ===================================
+   Room component for managing game room data and transitions.
+*/
+
 export class Room {
-  constructor(config) {
-    this.id = config.id;
-    this.name = config.name;
-    this.type = config.type || 'normal'; // normal, boss
+  constructor(id, theme, bounds, spawnPoint = null) {
+    this.id = id;
+    this.theme = theme;
+    this.bounds = bounds;
+    this.spawnPoint = spawnPoint || { x: 100, y: 550 };
     
-    // Room boundaries
-    this.x = config.x;
-    this.y = config.y;
-    this.width = config.width;
-    this.height = config.height;
+    // Arrays for room contents
+    this.doors = [];
+    this.enemies = [];
+    this.items = [];
+    
+    // Room state
+    this.visited = false;
+    this.cleared = false;
+    this.isActive = false;
+    this.hasBeenVisited = false;
     
     // Spawn points for player entering from different directions
     this.spawnPoints = {
-      left: { x: this.x + 50, y: this.y + this.height - 100 },
-      right: { x: this.x + this.width - 50, y: this.y + this.height - 100 },
-      top: { x: this.x + this.width / 2, y: this.y + this.height - 50 },
-      bottom: { x: this.x + this.width / 2, y: this.y + 50 },
-      center: { x: this.x + this.width / 2, y: this.y + this.height - 100 }
+      left: { x: bounds.x + 50, y: bounds.y + bounds.height - 100 },
+      right: { x: bounds.x + bounds.width - 50, y: bounds.y + bounds.height - 100 },
+      top: { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height - 50 },
+      bottom: { x: bounds.x + bounds.width / 2, y: bounds.y + 50 },
+      center: { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height - 100 }
     };
     
-    // Override spawn points if provided
-    if (config.spawnPoints) {
-      Object.assign(this.spawnPoints, config.spawnPoints);
-    }
-    
-    // Transition zones (areas that trigger room changes)
-    this.transitions = config.transitions || [];
-    
-    // Enemies that should spawn in this room
-    this.enemySpawns = config.enemySpawns || [];
-    this.bossSpawns = config.bossSpawns || [];
-    
-    // Track if enemies are alive (for respawn logic)
+    // Track spawned entities
     this.spawnedEnemies = new Set();
     this.spawnedBosses = new Set();
     this.bossesDefeated = new Set();
-    
-    // Room state
-    this.isActive = false;
-    this.hasBeenVisited = false;
   }
   
+  // Door management
+  addDoor(door) {
+    this.doors.push(door);
+  }
+  
+  removeDoor(door) {
+    const index = this.doors.indexOf(door);
+    if (index > -1) {
+      this.doors.splice(index, 1);
+    }
+  }
+  
+  // Enemy management
+  addEnemy(enemy) {
+    this.enemies.push(enemy);
+  }
+  
+  removeEnemy(enemy) {
+    const index = this.enemies.indexOf(enemy);
+    if (index > -1) {
+      this.enemies.splice(index, 1);
+    }
+  }
+  
+  hasEnemies() {
+    return this.enemies.length > 0;
+  }
+  
+  getEnemyCount() {
+    return this.enemies.length;
+  }
+  
+  // Item management
+  addItem(item) {
+    this.items.push(item);
+  }
+  
+  removeItem(item) {
+    const index = this.items.indexOf(item);
+    if (index > -1) {
+      this.items.splice(index, 1);
+    }
+  }
+  
+  hasItems() {
+    return this.items.length > 0;
+  }
+  
+  getItemCount() {
+    return this.items.length;
+  }
+  
+  getDoorBySide(side) {
+    return this.doors.find(door => door.side === side);
+  }
+  
+  // Room state methods
+  visit() {
+    this.visited = true;
+    this.hasBeenVisited = true;
+  }
+  
+  clear() {
+    this.cleared = true;
+  }
+  
+  reset() {
+    this.visited = false;
+    this.cleared = false;
+    this.doors = [];
+    this.enemies = [];
+    this.items = [];
+  }
+  
+  // Utility methods
   isInside(x, y) {
-    return x >= this.x && x <= this.x + this.width && 
-           y >= this.y && y <= this.y + this.height;
+    return x >= this.bounds.x && x <= this.bounds.x + this.bounds.width && 
+           y >= this.bounds.y && y <= this.bounds.y + this.bounds.height;
+  }
+  
+  containsPoint(x, y) {
+    return x >= this.bounds.x && x < this.bounds.x + this.bounds.width && 
+           y >= this.bounds.y && y < this.bounds.y + this.bounds.height;
   }
   
   getSpawnPoint(direction = 'center') {
@@ -51,13 +127,13 @@ export class Room {
   }
   
   checkTransitions(playerX, playerY) {
-    for (const transition of this.transitions) {
-      if (playerX >= transition.x && playerX <= transition.x + transition.width &&
-          playerY >= transition.y && playerY <= transition.y + transition.height) {
+    for (const door of this.doors) {
+      if (playerX >= door.x && playerX <= door.x + door.width &&
+          playerY >= door.y && playerY <= door.y + door.height) {
         return {
-          toRoom: transition.toRoom,
-          direction: transition.direction,
-          spawnDirection: transition.spawnDirection || this.getOppositeDirection(transition.direction)
+          toRoom: door.targetRoom,
+          direction: door.side,
+          spawnDirection: door.targetSpawn || this.getOppositeDirection(door.side)
         };
       }
     }
@@ -83,5 +159,19 @@ export class Room {
   
   deactivate() {
     this.isActive = false;
+  }
+  
+  // Check if room is boss room
+  isBossRoom() {
+    return this.theme === 'boss' || this.enemies.some(enemy => enemy.type === 'boss');
+  }
+  
+  // Get all interactive objects in room
+  getAllObjects() {
+    return {
+      doors: [...this.doors],
+      enemies: [...this.enemies],
+      items: [...this.items]
+    };
   }
 }

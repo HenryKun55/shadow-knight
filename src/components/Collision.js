@@ -1,11 +1,20 @@
-// --- COMPLETE AND UNABRIDGED FILE ---
+/* ===================================
+   COLLISION COMPONENT - SHADOW KNIGHT
+   ===================================
+   Collision component using centralized GameConfig for collision detection.
+   All collision bounds and offsets reference configuration.
+*/
+
+import { GameConfig } from '../config/GameConfig.js';
 
 export class Collision {
-  constructor(width = 32, height = 32, offsetX = 0, offsetY = 0) {
-    this.width = width;
-    this.height = height;
-    this.offsetX = offsetX;
-    this.offsetY = offsetY;
+  constructor(width = null, height = null, offsetX = null, offsetY = null) {
+    // Use collision configuration defaults if not specified
+    const defaults = GameConfig.COLLISION.DEFAULTS;
+    this.width = width || defaults.WIDTH;
+    this.height = height || defaults.HEIGHT;
+    this.offsetX = offsetX || defaults.OFFSET_X;
+    this.offsetY = offsetY || defaults.OFFSET_Y;
   }
 
   getBounds(position, sprite, entity = null) {

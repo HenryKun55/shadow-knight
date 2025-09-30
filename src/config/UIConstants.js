@@ -85,7 +85,37 @@ export const UIConstants = {
     // UI state classes
     HEALTH_FILL: 'health-fill',
     STAMINA_FILL: 'stamina-fill',
-    HEALTH_TEXT: 'health-text'
+    HEALTH_TEXT: 'health-text',
+    
+    // Dynamic UI classes for animations
+    DAMAGE_NUMBER: 'damage-number',
+    STATUS_MESSAGE: 'status-message'
+  },
+
+  /* ==================== ANIMATION CONSTANTS ==================== */
+  
+  ANIMATIONS: {
+    // CSS animation names
+    FADE_OUT: 'fadeOut',
+    FLOAT_UP: 'floatUp',
+    SHAKE: 'shake',
+    PULSE: 'pulse'
+  },
+
+  /* ==================== DYNAMIC STYLE IDS ==================== */
+  
+  STYLE_IDS: {
+    // IDs for dynamically created style elements
+    GAME_ANIMATIONS: 'game-ui-animations',
+    DAMAGE_NUMBERS: 'damage-number-styles',
+    STATUS_MESSAGES: 'status-message-styles'
+  },
+
+  /* ==================== ELEMENT IDS ==================== */
+  
+  IDS: {
+    // Map system element IDs
+    MAP_BACKGROUND_SHADOW: 'map-background-shadow'
   },
 
   /* ==================== UI TEXT CONSTANTS ==================== */
@@ -243,6 +273,26 @@ export const UIConstants = {
     DECREASE_SMALL: '-',
     INCREASE_SMALL: '+',
     INCREASE_LARGE: '++'
+  },
+
+  /* ==================== UI MESSAGES ==================== */
+  
+  MESSAGES: {
+    // Game state messages
+    GAME_OVER: 'GAME OVER\\nPress SPACE to restart',
+    LEVEL_COMPLETE: 'Level Complete!',
+    LOADING: 'Loading...',
+    
+    // Action messages
+    SAVE_SUCCESS: 'Game saved successfully!',
+    SAVE_FAILED: 'Failed to save game!',
+    LOAD_SUCCESS: 'Game loaded successfully!',
+    LOAD_FAILED: 'Failed to load game!',
+    
+    // Error messages
+    ERROR_GENERIC: 'An error occurred',
+    ERROR_NETWORK: 'Network error',
+    ERROR_STORAGE: 'Storage error'
   },
 
   /* ==================== CSS CUSTOM PROPERTIES ==================== */

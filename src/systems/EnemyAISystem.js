@@ -1,10 +1,21 @@
-// --- COMPLETE AND UNABRIDGED FILE ---
+/* ===================================
+   ENEMY AI SYSTEM - SHADOW KNIGHT
+   ===================================
+   Enemy AI system using centralized GameConfig for AI behavior and timing.
+   All AI parameters and animations reference configuration.
+*/
 
 import { CombatSystem } from './CombatSystem.js';
+import { GameConfig } from '../config/GameConfig.js';
 
 export class EnemyAISystem {
   constructor() {
     this.game = null;
+    
+    // Cache AI configuration for performance
+    this.aiConfig = GameConfig.AI;
+    this.enemyConfig = GameConfig.ENEMIES;
+    this.animationConfig = GameConfig.ANIMATION.ENEMY;
   }
 
   update(deltaTime) {
@@ -44,14 +55,21 @@ export class EnemyAISystem {
   }
 
   updateAIState(enemy, distanceToPlayer, sprite) {
-    if (enemy.state === 'idle' && distanceToPlayer <= enemy.detectionRange) {
+    const detectionRange = enemy.detectionRange;
+    const attackRange = enemy.attackRange;
+    const chaseMultiplier = this.aiConfig.CHASE_RANGE_MULTIPLIER;
+    
+    if (enemy.state === 'idle' && distanceToPlayer <= detectionRange) {
       enemy.state = 'chase';
     } else if (enemy.state === 'chase') {
-      if (distanceToPlayer > enemy.detectionRange * 1.5) {
+      if (distanceToPlayer > detectionRange * chaseMultiplier) {
         enemy.state = 'idle';
-      } else if (distanceToPlayer <= enemy.attackRange && enemy.canAttack()) {
+      } else if (distanceToPlayer <= attackRange && enemy.canAttack()) {
         enemy.startAttack();
-        if (sprite) sprite.flash('#ff6b6b', 200); // Flash red when attacking
+        if (sprite) {
+          const flashConfig = this.aiConfig.ATTACK_FLASH;
+          sprite.flash(flashConfig.COLOR, flashConfig.DURATION);
+        }
       }
     }
   }
@@ -61,8 +79,8 @@ export class EnemyAISystem {
     const position = enemyEntity.getComponent('Position');
     switch (enemy.state) {
       case 'idle':
-        velocity.x *= 0.8;
-        if (sprite) sprite.playAnimation('idle');
+        velocity.x *= this.aiConfig.IDLE_FRICTION;
+        if (sprite) sprite.playAnimation(this.animationConfig.IDLE.name);
         break;
       case 'chase':
         const direction = playerPos.x > position.x ? 1 : -1;
@@ -70,23 +88,27 @@ export class EnemyAISystem {
         enemy.facingDirection = direction;
         if (sprite) {
           sprite.flipX = direction < 0;
-          sprite.playAnimation('run');
+          sprite.playAnimation(this.animationConfig.RUN.name);
         }
         break;
     }
   }
 
   executeAttackBehavior(enemy, enemyEntity, position) {
-    enemyEntity.getComponent('Velocity').x *= 0.2;
+    enemyEntity.getComponent('Velocity').x *= this.aiConfig.ATTACK_FRICTION;
     const attackProgress = enemy.attackTime / enemy.attackDuration;
-    if (attackProgress >= 0.6 && attackProgress <= 0.8) {
+    
+    // Use configured attack timing window
+    const attackWindow = this.aiConfig.ATTACK_WINDOW;
+    if (attackProgress >= attackWindow.START && attackProgress <= attackWindow.END) {
       const combatSystem = this.game.getSystem(CombatSystem);
-      const hitboxWidth = 60;
+      const hitboxConfig = this.aiConfig.HITBOX;
+      
       combatSystem.createHitbox(enemyEntity, {
-        x: position.x + (enemy.facingDirection > 0 ? 10 : -hitboxWidth),
-        y: position.y - 10,
-        width: hitboxWidth,
-        height: 40,
+        x: position.x + (enemy.facingDirection > 0 ? hitboxConfig.OFFSET_X_RIGHT : -hitboxConfig.WIDTH),
+        y: position.y + hitboxConfig.OFFSET_Y,
+        width: hitboxConfig.WIDTH,
+        height: hitboxConfig.HEIGHT,
         damage: enemy.damage,
         attackId: enemy.lastAttackTime
       });

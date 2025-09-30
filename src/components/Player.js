@@ -1,49 +1,74 @@
-// --- COMPLETE AND UNABRIDGED FILE ---
+/* ===================================
+   PLAYER COMPONENT - SHADOW KNIGHT
+   ===================================
+   Player component using centralized GameConfig for all stats and mechanics.
+   All values now reference the configuration system for consistency.
+*/
 
 import { cheats } from '../core/cheat.js';
 import { MapState } from './MapState.js';
+import { GameConfig } from '../config/GameConfig.js';
 
 export class Player {
   constructor() {
-    this.speed = 300;
-    this.jumpPower = 500;
-    this.dashSpeed = 800;
-    this.dashDuration = 200;
-    this.dashCooldown = 500;
+    // Movement settings from configuration
+    this.speed = GameConfig.PLAYER.MOVEMENT.SPEED;
+    this.jumpPower = GameConfig.PLAYER.MOVEMENT.JUMP_POWER;
+    this.dashSpeed = GameConfig.PLAYER.MOVEMENT.DASH_SPEED;
+    this.dashDuration = GameConfig.PLAYER.MOVEMENT.DASH_DURATION;
+    this.dashCooldown = GameConfig.PLAYER.MOVEMENT.DASH_COOLDOWN;
 
-    this.maxHealth = 100;
+    // Health and stamina from configuration
+    this.maxHealth = GameConfig.PLAYER.STATS.MAX_HEALTH;
     this.health = this.maxHealth;
-    this.maxStamina = 100;
+    this.maxStamina = GameConfig.PLAYER.STATS.MAX_STAMINA;
     this.stamina = this.maxStamina;
-    this.staminaRegenRate = 50;
+    this.staminaRegenRate = GameConfig.PLAYER.STATS.STAMINA_REGEN_RATE;
 
-    this.dashStaminaCost = 30;
-    this.attackStaminaCost = 15;
+    // Stamina costs from configuration
+    this.dashStaminaCost = GameConfig.PLAYER.STAMINA_COSTS.DASH;
+    this.attackStaminaCost = GameConfig.PLAYER.STAMINA_COSTS.ATTACK;
 
-    this.dashDamage = 20;
+    // Combat settings from configuration
+    this.dashDamage = GameConfig.PLAYER.COMBAT.DASH_DAMAGE;
     this.isDashAttacking = false;
     this.isDashing = false;
     this.dashTime = 0;
     this.lastDashTime = 0;
     this.isAttacking = false;
     this.attackTime = 0;
-    this.attackDuration = 300;
+    this.attackDuration = GameConfig.PLAYER.COMBAT.ATTACK_DURATION;
 
-    this.attackCooldown = 500;
+    this.attackCooldown = GameConfig.PLAYER.COMBAT.ATTACK_COOLDOWN;
     this.lastAttackInputTime = 0;
 
     this.attackDirection = 'none';
 
-    this.coyoteTime = 150;
-    this.jumpBufferTime = 150;
+    // Jump mechanics from configuration
+    this.coyoteTime = GameConfig.PLAYER.JUMP.COYOTE_TIME;
+    this.jumpBufferTime = GameConfig.PLAYER.JUMP.BUFFER_TIME;
     this.lastGroundTime = 0;
     this.lastJumpInput = 0;
-    this.canDoubleJump = true;
+    this.canDoubleJump = GameConfig.PLAYER.JUMP.DOUBLE_JUMP_ENABLED;
     this.hasDoubleJumped = false;
+
+    // Combat combo system from configuration
+    this.comboCount = 1;
+    this.comboWindow = GameConfig.PLAYER.COMBAT.COMBO_WINDOW;
+    this.maxComboCount = GameConfig.PLAYER.COMBAT.MAX_COMBO_COUNT;
+    this.lastAttackTime = 0;
+
+    // Invulnerability settings
+    this.invulnerabilityDuration = GameConfig.PLAYER.STATS.INVULNERABILITY_DURATION;
+    this.invulnerabilityTime = 0;
+    this.hitStop = 0;
 
     // Map system
     this.mapState = new MapState();
     this.isTransitioning = false;
+
+    // Player direction
+    this.facingDirection = 1; // 1 for right, -1 for left
   }
 
   canDash() {
@@ -83,6 +108,9 @@ export class Player {
       return false;
     }
 
+    // Update attack input time immediately to prevent double attacks
+    this.lastAttackInputTime = Date.now();
+
     // Directional attack conditions
     if (direction === 'down' && physics.onGround) {
       return false; // Down attack only in air
@@ -91,17 +119,21 @@ export class Player {
     this.isAttacking = true;
     this.attackTime = 0;
     this.attackDirection = direction;
+    
+    // Use cheat system or consume stamina
     if (!cheats.infiniteStamina) {
       this.stamina -= this.attackStaminaCost;
     }
+    
+    // Combo system using configuration
     const timeSinceLastAttack = Date.now() - this.lastAttackTime;
     if (timeSinceLastAttack <= this.comboWindow) {
-      this.comboCount = Math.min(this.comboCount + 1, 3);
+      this.comboCount = Math.min(this.comboCount + 1, this.maxComboCount);
     } else {
       this.comboCount = 1;
     }
+    
     this.lastAttackTime = Date.now();
-    this.lastAttackInputTime = Date.now();
     return true;
   }
 
@@ -119,9 +151,16 @@ export class Player {
     if (this.invulnerabilityTime > 0) return false;
     this.health = Math.max(0, this.health - amount);
     this.invulnerabilityTime = this.invulnerabilityDuration;
-    this.hitStop = 100;
+    this.hitStop = GameConfig.PLAYER.COMBAT.HIT_STOP_DURATION;
     if (sprite) {
-      sprite.flash('#ffffff', 150); // Flash white when taking damage
+      // Força reset do flash antes de aplicar novo
+      sprite.flashDuration = 0;
+      sprite.flashColor = null;
+      if (sprite.originalColor !== null) {
+        sprite.color = sprite.originalColor;
+        sprite.originalColor = null;
+      }
+      sprite.flash(GameConfig.PLAYER.VISUAL_EFFECTS.DAMAGE_FLASH_COLOR, GameConfig.PLAYER.VISUAL_EFFECTS.DAMAGE_FLASH_DURATION);
     }
     return true;
   }

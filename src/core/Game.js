@@ -300,6 +300,10 @@ export class Game {
     
     this.gameLoop();
   }
+  
+  stop() {
+    this.isRunning = false;
+  }
 
   gameLoop(currentTime = performance.now()) {
     if (!this.isRunning) return;
